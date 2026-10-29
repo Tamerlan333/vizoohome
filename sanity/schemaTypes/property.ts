@@ -59,6 +59,7 @@ export const property = defineType({
   name: "contactPhone",
   title: "Əlaqə nömrəsi",
   type: "string",
+  fieldset: "other",
   placeholder: "+994 XX XXX XX XX",
   description: "Bu elan üçün elan sahibinin və ya səlahiyyətli əlaqə şəxsin telefon nömrəsini daxil edin.",
 }),
