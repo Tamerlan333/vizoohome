@@ -55,7 +55,7 @@ export const property = defineType({
     localized("title", "Başlıq", "string", "required", "i18n", "Azərbaycanca başlıq məcburidir; RU/EN boş qala bilər (sayt Azərbaycanca göstərir)."),
     defineField({ name: "slug", title: "Slug (URL)", type: "slug", fieldset: "i18n", options: { source: "title.az", slugify, maxLength: 80 }, validation: (r) => r.required() }),
     localized("description", "Təsvir", "text", "recommended", "i18n", "Siz yazdığınız mətn dəyişdirilmədən göstərilir; tərcümə olunmayıbsa Azərbaycanca göstərilir."),
-    defineField({
+   defineField({
   name: "contactPhone",
   title: "Əlaqə nömrəsi",
   type: "string",
