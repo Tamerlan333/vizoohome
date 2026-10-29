@@ -59,21 +59,13 @@ export const property = defineType({
   name: "contactPhone",
   title: "Əlaqə nömrəsi",
   type: "string",
-  fieldset: "other",
   placeholder: "+994 XX XXX XX XX",
   description: "Bu elan üçün elan sahibinin və ya səlahiyyətli əlaqə şəxsin telefon nömrəsini daxil edin.",
-  validation: (r) =>
-    r.custom((v) =>
-      typeof v !== "string" || !v.trim() || isValidPhone(v)
-        ? true
-        : "Düzgün nömrə daxil edin (məs. +994 50 123 45 67 və ya 050 123 45 67)"
-    ),
 }),
 defineField({
   name: "featured",
   title: "Seçilmiş elan",
   type: "boolean",
-  fieldset: "other",
   initialValue: false,
   description: "Ana səhifədə və siyahıda önə çıxarılır.",
 }),
