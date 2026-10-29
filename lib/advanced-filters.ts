@@ -1,3 +1,4 @@
+import { REPAIR_OPTIONS } from "./property-fields.ts";
 /** Advanced search filters. Reuses the existing Sanity fields: repairStatus, areaM2, floor, totalFloors (no schema change). */
 export type Repair = "repaired" | "unrepaired";
 export interface AdvancedFilters { repair?: Repair; minArea?: number; maxArea?: number; minFloor?: number; maxFloor?: number; excludeFirstFloor: boolean; excludeTopFloor: boolean; topFloorOnly: boolean }
@@ -13,7 +14,7 @@ const num = (v: string | undefined, int: boolean, max: number): number | undefin
 };
 /** Parses URL params. Invalid values are dropped; min>max drops the max; contradictory top-floor flags -> topFloorOnly wins. Land ignores repair/floor filters. */
 export function parseAdvanced(q: Q, opts: { land: boolean }): AdvancedFilters {
-  const r = str(q, "repair"); const repair: Repair | undefined = opts.land ? undefined : r === "repaired" || r === "unrepaired" ? r : undefined;
+  const r = str(q, "repair"); const repair: Repair | undefined = opts.land ? undefined : REPAIR_OPTIONS.some((o) => o.value === r) ? (r as Repair) : undefined;
   const minArea = num(str(q, "minArea"), false, MAX_AREA); let maxArea = num(str(q, "maxArea"), false, MAX_AREA);
   if (minArea !== undefined && maxArea !== undefined && maxArea < minArea) maxArea = undefined;
   let minFloor = opts.land ? undefined : num(str(q, "minFloor"), true, MAX_FLOOR); let maxFloor = opts.land ? undefined : num(str(q, "maxFloor"), true, MAX_FLOOR);
