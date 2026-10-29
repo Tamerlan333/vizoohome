@@ -55,13 +55,25 @@ export const property = defineType({
     localized("title", "Başlıq", "string", "required", "i18n", "Azərbaycanca başlıq məcburidir; RU/EN boş qala bilər (sayt Azərbaycanca göstərir)."),
     defineField({ name: "slug", title: "Slug (URL)", type: "slug", fieldset: "i18n", options: { source: "title.az", slugify, maxLength: 80 }, validation: (r) => r.required() }),
     localized("description", "Təsvir", "text", "recommended", "i18n", "Siz yazdığınız mətn dəyişdirilmədən göstərilir; tərcümə olunmayıbsa Azərbaycanca göstərilir."),
-    defineField({ name: "contactPhone", title: "Əlaqə nömrəsi", type: "string", fieldset: "other", placeholder: "+994 XX XXX XX XX",
-      description: "Bu elan üçün elan sahibinin və ya səlahiyyətli əlaqə şəxsin telefon nömrəsini daxil edin.",
-      validation: (r) => r.custom((v) => (typeof v !== "string" || !v.trim() || isValidPhone(v) ? true : "Düzgün nömrə daxil edin (məs. +994 50 123 45 67 və ya 050 123 45 67; beynəlxalq nömrə + ilə başlamalıdır).")) }),
-    defineField({ name: "featured", title: "Seçilmiş elan", type: "boolean", fieldset: "other", initialValue: false, description: "Ana səhifədə və siyahıda önə çıxarılır." }),
-  ],
-  preview: {
-    select: { title: "title.az", tx: "transaction", price: "price", currency: "currency", city: "cityId", media: "photos.0" },
-    prepare: ({ title, tx, price, currency, city, media }) => ({ title: title || "(başlıqsız)", subtitle: [tx === "rent" ? "Kirayə" : "Satış", price ? `${price} ${currency ?? "AZN"}` : "", labelOf(city)].filter(Boolean).join(" · "), media }),
-  },
-});
+    defineField({
+  name: "contactPhone",
+  title: "Əlaqə nömrəsi",
+  type: "string",
+  fieldset: "other",
+  placeholder: "+994 XX XXX XX XX",
+  description: "Bu elan üçün elan sahibinin və ya səlahiyyətli əlaqə şəxsin telefon nömrəsini daxil edin.",
+  validation: (r) =>
+    r.custom((v) =>
+      typeof v !== "string" || !v.trim() || isValidPhone(v)
+        ? true
+        : "Düzgün nömrə daxil edin (məs. +994 50 123 45 67 və ya 050 123 45 67)"
+    ),
+}),
+defineField({
+  name: "featured",
+  title: "Seçilmiş elan",
+  type: "boolean",
+  fieldset: "other",
+  initialValue: false,
+  description: "Ana səhifədə və siyahıda önə çıxarılır.",
+}),
