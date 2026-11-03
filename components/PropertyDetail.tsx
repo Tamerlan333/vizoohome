@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Phone } from "lucide-react";
 import Gallery from "@/components/Gallery";
 import PropertyCard from "@/components/PropertyCard";
 import SaveButton from "@/components/SaveButton";
@@ -37,7 +38,7 @@ export default async function PropertyDetail({ p, related }: { p: Property; rela
       {contact && (<aside aria-labelledby="owner-contact" className="rounded-xl border border-line bg-soft p-5 md:self-start">
         <h2 id="owner-contact" className="text-xl font-semibold text-navy">{t("contact.title")}</h2>
         <p className="mt-3 text-xs text-mute">{t("contact.phone")}</p>
-        <a href={contact.tel} className="break-all text-2xl font-bold text-navy transition-colors hover:text-amber">{contact.display}</a>
+        <a href={contact.tel} className="inline-flex items-center gap-2 break-all text-2xl font-bold text-navy transition-colors hover:text-amber"><Phone className="h-6 w-6 shrink-0 text-amber" aria-hidden />{contact.display}</a>
         <div className="mt-4 flex flex-wrap gap-3">
           <a href={contact.tel} className="inline-flex min-h-[44px] items-center rounded-lg bg-navy px-5 text-sm font-semibold text-white transition active:scale-[.97]">{t("contact.call")}</a>
           <a href={contact.wa} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-amber px-5 text-sm font-semibold text-navy transition hover:brightness-95 active:scale-[.97]">{t("contact.whatsapp")}</a></div></aside>)}</div>

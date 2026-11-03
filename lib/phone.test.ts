@@ -15,8 +15,8 @@ test("display, tel and WhatsApp links use the same number", () => {
 test("missing or invalid numbers produce no contact block (no undefined, no placeholder)", () => { for (const v of [undefined, null, "", "  ", "nope"]) assert.equal(contactOf(v as unknown), null); });
 test("schema: contactPhone field, Azerbaijani label/description/placeholder, validation, separate from description", () => {
   const sc = fs.readFileSync("sanity/schemaTypes/property.ts", "utf8");
-  assert.ok(sc.includes('name: "contactPhone", title: "Əlaqə nömrəsi", type: "string"')); assert.ok(sc.includes('placeholder: "+994 XX XXX XX XX"'));
-  assert.ok(sc.includes("Bu elan üçün ev sahibinin və ya səlahiyyətli əlaqə şəxsin telefon nömrəsini daxil edin.")); assert.ok(sc.includes("isValidPhone(v)"));
+  assert.ok(sc.includes('name: "contactPhone", title: "Əlaqə nömrəsi", type: "string"')); assert.ok(sc.includes('placeholder: "+994 50 123 45 67"'));
+  assert.ok(sc.includes("Bu elanın sahibinin mobil nömrəsini daxil edin.")); assert.ok(sc.includes("isValidPhone(v)"));
   assert.equal((sc.match(/name: "contactPhone"/g) ?? []).length, 1); assert.ok(!/contactPhone[^\n]*initialValue/.test(sc), "no default/hardcoded phone"); });
 test("privacy: phone is fetched by the detail query only, never in list/related/saved/filter/sitemap queries", () => {
   const p = fs.readFileSync("lib/properties.ts", "utf8"); const q = fs.readFileSync("lib/query.ts", "utf8");
