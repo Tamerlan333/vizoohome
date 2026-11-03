@@ -89,7 +89,7 @@ const R: [string, string, string, string][] = [
 ["adv.errInt", "Tam ədəd daxil edin.", "Введите целое число.", "Enter a whole number."], ["adv.errNeg", "Düzgün, mənfi olmayan dəyər daxil edin.", "Введите корректное неотрицательное значение.", "Enter a valid, non-negative value."],
 ["adv.dataNote", "Mərtəbə məlumatı olmayan elanlar «Yalnız ən üst» nəticələrinə daxil edilmir.", "Объекты без данных об этаже не попадают в результаты «Только последний».", "Listings without floor data are not included in \"Top floor only\"."],
 ["adv.apply", "Tətbiq et", "Применить", "Apply"], ["adv.reset", "Sıfırla", "Сбросить", "Reset"], ["adv.resetAria", "Ətraflı filtrləri sıfırla", "Сбросить расширенные фильтры", "Reset advanced filters"],
-["contact.title", "Ev sahibi ilə əlaqə", "Связаться с владельцем", "Contact the owner"], ["contact.phone", "Əlaqə nömrəsi", "Контактный номер", "Contact number"],
+["contact.title", "Elan sahibi ilə əlaqə", "Связаться с владельцем объявления", "Contact the listing owner"], ["contact.phone", "Əlaqə nömrəsi", "Контактный номер", "Contact number"],
 ["contact.call", "Zəng et", "Позвонить", "Call"], ["contact.whatsapp", "WhatsApp ilə yaz", "Написать в WhatsApp", "Message on WhatsApp"],
 ];
 export const DICT: Record<Lang, Record<string, string>> = { az: {}, ru: {}, en: {} };
