@@ -16,3 +16,13 @@ body{color:#1E293B;background:#fff;font-family:Inter,system-ui,sans-serif}
 .card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}.card .im{transition:transform .25s ease}
 @media (hover:hover){.card:hover{transform:translateY(-3px);box-shadow:0 10px 24px -12px #0B192C55;border-color:#CBD5E1}.card:hover .im{transform:scale(1.03)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* ---- Services section (disabled automatically by the reduced-motion rule above) ---- */
+.svc[data-shown="false"] .svc-card{opacity:0;transform:translateY(16px)}
+.svc[data-shown="true"] .svc-card{animation:svc-in .55s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:calc(var(--i,0)*120ms)}
+@keyframes svc-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.svc-card{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+@media (hover:hover){.svc-card:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px #0B192C66;border-color:#CBD5E1}}
+.svc-premium{box-shadow:0 14px 34px -18px #FF9D2399}
+.svc-premium::before{content:"";position:absolute;inset:-1.5px;border-radius:inherit;padding:1.5px;pointer-events:none;background:linear-gradient(110deg,#FF9D23,#FFE0A6,#FF9D23,#FFC46B,#FF9D23);background-size:300% 100%;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:svc-shine 7s linear infinite}
+@keyframes svc-shine{to{background-position:-300% 0}}

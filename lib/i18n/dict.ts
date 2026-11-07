@@ -91,6 +91,21 @@ const R: [string, string, string, string][] = [
 ["adv.apply", "Tətbiq et", "Применить", "Apply"], ["adv.reset", "Sıfırla", "Сбросить", "Reset"], ["adv.resetAria", "Ətraflı filtrləri sıfırla", "Сбросить расширенные фильтры", "Reset advanced filters"],
 ["contact.title", "Elan sahibi ilə əlaqə", "Связаться с владельцем объявления", "Contact the listing owner"], ["contact.phone", "Əlaqə nömrəsi", "Контактный номер", "Contact number"],
 ["contact.call", "Zəng et", "Позвонить", "Call"], ["contact.whatsapp", "WhatsApp ilə yaz", "Написать в WhatsApp", "Message on WhatsApp"],
+["svc.title", "Xidmətlərimiz və Paketlərimiz", "Наши услуги и пакеты", "Our Services and Packages"],
+["svc.sub", "Əmlakınızı daha effektiv təqdim edin və satış prosesində peşəkar dəstək əldə edin.", "Представьте свой объект эффективнее и получите профессиональную поддержку в процессе продажи.", "Present your property more effectively and get professional support throughout the sale."],
+["svc.newTab", "yeni pəncərədə açılır", "откроется в новой вкладке", "opens in a new tab"],
+["svc.1.title", "Əmlakın Peşəkar Təqdimatı", "Профессиональная презентация объекта", "Professional Property Presentation"],
+["svc.1.desc", "Əmlakınızı VizooHome platformasında təqdim edin və potensial alıcılara daha rahat çatın.", "Представьте свой объект на платформе VizooHome и легче находите потенциальных покупателей.", "List your property on the VizooHome platform and reach potential buyers more easily."],
+["svc.1.cta", "Müraciət et", "Оставить заявку", "Apply"],
+["svc.2.title", "Çəkiliş Paketi", "Пакет съёмки", "Filming Package"],
+["svc.2.desc", "Əmlakınızın təqdimatı üçün peşəkar çəkiliş xidməti.", "Профессиональная съёмка для презентации вашего объекта.", "Professional filming service to present your property."],
+["svc.2.cta", "Paketi seç", "Выбрать пакет", "Choose package"],
+["svc.3.title", "Rieltor Paketi", "Пакет риелтора", "Realtor Package"],
+["svc.3.desc", "Əmlakınızın təqdimatı və satış prosesində rieltor dəstəyi üçün premium xidmət paketi.", "Премиальный пакет услуг: презентация объекта и поддержка риелтора в процессе продажи.", "A premium service package with realtor support for presenting and selling your property."],
+["svc.3.cta", "Paketi seç", "Выбрать пакет", "Choose package"],
+["svc.1.label", "İLK AY ÜÇÜN XÜSUSİ TƏKLİF", "СПЕЦПРЕДЛОЖЕНИЕ НА ПЕРВЫЙ МЕСЯЦ", "SPECIAL OFFER FOR THE FIRST MONTH"], ["svc.1.badge", "50% ENDİRİM", "СКИДКА 50%", "50% OFF"],
+["svc.1.note", "15 AZN yalnız ilk ay üçün keçərlidir.", "15 AZN действует только в первый месяц.", "15 AZN applies to the first month only."], ["svc.was", "Əvvəlki qiymət", "Прежняя цена", "Original price"],
+["svc.2.label", "XÜSUSİ TƏKLİF", "СПЕЦИАЛЬНОЕ ПРЕДЛОЖЕНИЕ", "SPECIAL OFFER"], ["svc.3.label", "PREMIUM TƏKLİF", "ПРЕМИУМ-ПРЕДЛОЖЕНИЕ", "PREMIUM OFFER"],
 ];
 export const DICT: Record<Lang, Record<string, string>> = { az: {}, ru: {}, en: {} };
 R.forEach(([k, a, r, e]) => { DICT.az[k] = a; DICT.ru[k] = r; DICT.en[k] = e; });
