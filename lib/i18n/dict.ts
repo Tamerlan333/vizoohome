@@ -43,6 +43,7 @@ const R: [string, string, string, string][] = [
 ["home.empty", "Hələ dərc olunmuş əmlak yoxdur.", "Опубликованных объектов пока нет.", "No properties have been published yet."],
 ["page.aria", "Səhifələr", "Страницы", "Pages"], ["page.prev", "← Əvvəlki", "← Назад", "← Previous"], ["page.next", "Növbəti →", "Далее →", "Next →"],
 ["card.video", "Video var", "Есть видео", "Video"], ["price.month", " / ay", " / мес.", " / month"], ["u.m2", "m²", "м²", "m²"],
+["card.prev", "Əvvəlki foto", "Предыдущее фото", "Previous photo"], ["card.next", "Növbəti foto", "Следующее фото", "Next photo"], ["card.moreCount", "+{n} foto", "+{n} фото", "+{n} photos"], ["card.details", "Ətraflı bax", "Подробнее", "View property details"],
 ["save.add", "Saxla", "Сохранить", "Save"], ["save.on", "Saxlanıb", "Сохранено", "Saved"],
 ["save.aria.add", "Elanı saxla", "Сохранить объявление", "Save this listing"], ["save.aria.remove", "Saxlanmışlardan çıxar", "Убрать из сохранённых", "Remove from saved"],
 ["saved.title", "Saxlanmış elanlar", "Сохранённые объявления", "Saved listings"],

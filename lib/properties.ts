@@ -3,9 +3,12 @@ import { expandType, type Property } from "@/lib/property-utils";
 import { FILTER, PAGE_SIZE, buildParams } from "@/lib/query";
 import type { SearchParams } from "@/lib/search";
 export { PAGE_SIZE };
-const BASE = `_id,"slug":slug.current,title,description,transaction,propertyType,cityId,districtId,settlementId,metroIds,areaId,address,price,currency,rooms,areaM2,floor,totalFloors,buildingType,repairStatus,hasTitleDeed,featured,"videoUrl":video.asset->url,"photos":photos[defined(asset)]{"url":asset->url,alt}`;
-/** List/related/saved results never include contactPhone. */
-export const PROJ = `{${BASE}}`;
+/** Every listing field except the photos. */
+const FIELDS = `_id,"slug":slug.current,title,description,transaction,propertyType,cityId,districtId,settlementId,metroIds,areaId,address,price,currency,rooms,areaM2,floor,totalFloors,buildingType,repairStatus,hasTitleDeed,featured,"videoUrl":video.asset->url`;
+/** Detail projection source: ALL photos (unchanged from before). */
+const BASE = `${FIELDS},"photos":photos[defined(asset)]{"url":asset->url,alt}`;
+/** List/related/saved results never include contactPhone. They carry only the first 5 photos that have an image URL (the card preview) plus the total number of such photos. */
+export const PROJ = `{${FIELDS},"photoCount":count(coalesce(photos,[])[defined(asset->url)]),"photos":photos[defined(asset->url)][0...5]{"url":asset->url,alt}}`;
 /** Detail page only: the owner's phone is fetched here and nowhere else. */
 export const PROJ_DETAIL = `{${BASE},contactPhone}`;
 export async function listPublished(f: Partial<SearchParams>) {
