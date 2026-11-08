@@ -3,6 +3,8 @@ import { REGIONS, DISTRICTS, SETTLEMENTS, METRO, BAKU_ID, ABSERON_ID, isValidLoc
 import { slugify } from "../../lib/slug.ts";
 import { isValidPhone } from "../../lib/phone.ts";
 import { BUILDING_TYPES, CURRENCIES, LEGACY_PROPERTY_TYPES, MAX_FLOOR, MAX_ROOMS, PROPERTY_TYPES, REPAIR_OPTIONS, ROOM_OPTIONS, TITLE_DEED_OPTIONS, TRANSACTIONS, TYPES_WITHOUT_BUILDING, TYPES_WITH_FLOORS } from "../../lib/property-fields.ts";
+import { checkInsideAzerbaijan, checkRange } from "../../lib/location-validation.ts";
+import PropertyLocationInput from "../components/PropertyLocationInput";
 type Doc = Record<string, unknown> | undefined;
 const opts = <T extends string | number>(l: readonly { title: string; value: T }[]) => l.map((o) => ({ title: o.title, value: o.value }));
 const list = (l: { id: string; label: string }[]) => l.map((o) => ({ title: o.label, value: o.id }));
@@ -41,6 +43,10 @@ export const property = defineType({
       options: { list: SETTLEMENTS.map((x) => ({ title: `${labelOf(x.parent)} · ${x.label}`, value: x.id })) }, hidden: ({ document }) => !baku(document) }),
     defineField({ name: "metroIds", title: "Yaxınlıqdakı metro stansiyaları", type: "array", of: [{ type: "string" }], fieldset: "place", options: { list: list(METRO) }, validation: (r) => r.unique().max(25), hidden: ({ document }) => !baku(document) }),
     defineField({ name: "address", title: "Tam ünvan (istəyə bağlı)", type: "string", fieldset: "place" }),
+    defineField({ name: "location", title: "Xəritədə dəqiq yer (pin)", type: "geopoint", fieldset: "place",
+      description: "İstəyə bağlı. Pin qoyulmayan elan saytda normal işləyir, amma xəritə axtarışında görünmür. Koordinatlar: enlik, uzunluq (məsələn, Bakı: 40.4093, 49.8671).",
+      components: { input: PropertyLocationInput },
+      validation: (rule) => [rule.custom(checkRange).error(), rule.custom(checkInsideAzerbaijan).warning()] }),
     defineField({ name: "areaId", title: "Köhnə ərazi sahəsi (artıq istifadə olunmur; yalnız köhnə elanlarda)", type: "string", fieldset: "place", readOnly: true, hidden: ({ document }) => !document?.areaId }),
     defineField({ name: "repairStatus", title: "Təmir", type: "string", fieldset: "repairFloor", options: { list: opts(REPAIR_OPTIONS), layout: "radio", direction: "horizontal" }, description: "Bilinmirsə boş buraxın; şəkil və ya təsvirdən təxmin edilmir.", hidden: ({ document }) => isType(document, "land") }),
     defineField({ name: "floor", title: "Mərtəbə", type: "number", fieldset: "repairFloor", description: "Elanın yerləşdiyi mərtəbə (1 və yuxarı).", hidden: ({ document }) => !isType(document, ...TYPES_WITH_FLOORS),
