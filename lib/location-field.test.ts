@@ -17,13 +17,18 @@ test("location field: optional geopoint in section 4, own Azerbaijani label, cus
   assert.ok(b.includes("rule.custom(checkRange).error()") && b.includes("rule.custom(checkInsideAzerbaijan).warning()"));
   for (const bad of ["required", "hidden", "readOnly", "initialValue"]) assert.ok(!b.includes(bad), `location must not be ${bad}`);
   assert.ok(schema.includes('from "../../lib/location-validation.ts"') && schema.includes('from "../components/PropertyLocationInput"')); });
-test("input component (B1): replaces only this field's input, writes geopoint lat/lng without altitude, no map library", () => {
+test("input component: replaces only this field's input, writes geopoint lat/lng without altitude, map only through the lazy picker", () => {
   const c = fs.readFileSync("sanity/components/PropertyLocationInput.tsx", "utf8");
-  assert.ok(c.startsWith('"use client"') && c.includes("export default function PropertyLocationInput")); assert.ok(c.includes("set(toGeopoint(") && c.includes("onChange(unset())"));
-  assert.equal((c.match(/<Label as="label"/g) ?? []).length, 3, "real <label> elements (Sanity's Label renders a div unless as=\"label\")"); assert.ok(!/maplibre|terra-draw|turf|google/i.test(c), "no map library in B1"); assert.ok(!/\balt\b/.test(c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")), "no altitude"); });
-test("dependencies (B1): no map packages anywhere; the component only imports packages that already exist (react, sanity, @sanity/ui)", () => {
-  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); for (const n of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) assert.ok(!/maplibre|terra-draw|turf/i.test(n), "unexpected package " + n);
-  const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8")); assert.equal(Object.keys(lock.packages).filter((k) => /maplibre|terra-draw|turf/i.test(k)).length, 0, "lockfile has no map packages");
+  assert.ok(c.startsWith('"use client"') && c.includes("export default function PropertyLocationInput")); assert.ok(c.includes("set(toGeopoint(") && c.includes("onChange(unset())") && c.includes("set(g)"));
+  assert.equal((c.match(/<Label as="label"/g) ?? []).length, 3, "real <label> elements (Sanity's Label renders a div unless as=\"label\")");
+  assert.ok(c.includes('lazy(() => import("./LocationPickerMap"))'), "the map loads on demand"); assert.ok(!/from "maplibre-gl"|import\("maplibre-gl"\)/.test(c), "the input itself never imports the map library");
+  assert.ok(!/terra-draw|turf|google/i.test(c)); assert.ok(!/\balt\b/.test(c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")), "no altitude"); });
+test("dependencies: no drawing/geometry packages yet; maplibre-gl, if installed, is pinned exactly; imports stay inside react, sanity, @sanity/ui, maplibre-gl", () => {
+  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  for (const n of Object.keys(deps)) assert.ok(!/terra-draw|turf/i.test(n), "not part of B2: " + n);
+  if (pkg.dependencies?.["maplibre-gl"] !== undefined) assert.match(pkg.dependencies["maplibre-gl"], /^\d+\.\d+\.\d+$/, "exact version, no ^ or ~");
+  assert.equal(pkg.devDependencies?.["maplibre-gl"], undefined, "maplibre-gl belongs in dependencies");
+  const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8")); assert.equal(Object.keys(lock.packages).filter((k) => /terra-draw|turf/i.test(k)).length, 0);
   assert.ok(lock.packages["node_modules/@sanity/ui"], "@sanity/ui is installed (Sanity itself depends on it)");
-  const c = fs.readFileSync("sanity/components/PropertyLocationInput.tsx", "utf8"); const outside = [...c.matchAll(/from "([^"]+)"/g)].map((m) => m[1]).filter((m) => !m.startsWith(".")).sort();
-  assert.deepEqual(outside, ["@sanity/ui", "react", "sanity"]); });
+  const ext = (f: string) => [...fs.readFileSync(f, "utf8").matchAll(/from "([^"]+)"/g)].map((m) => m[1]).filter((m) => !m.startsWith(".")).sort();
+  assert.deepEqual(ext("sanity/components/PropertyLocationInput.tsx"), ["@sanity/ui", "react", "sanity"]); assert.deepEqual(ext("sanity/components/LocationPickerMap.tsx"), ["@sanity/ui", "maplibre-gl", "react"]); });

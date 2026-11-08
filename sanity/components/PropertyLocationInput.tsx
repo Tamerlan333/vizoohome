@@ -1,13 +1,26 @@
 "use client";
 /**
- * Studio input for the property "location" (geopoint) field. Stage B1: typed or pasted coordinates, no map yet.
+ * Studio input for the property "location" (geopoint) field: typed or pasted coordinates (B1) plus an on-demand map (B2).
  * Writes { _type: "geopoint", lat, lng } (6 decimals, no altitude) or removes the value. Replaces the input of THIS field only.
+ * The map (MapLibre) lives in LocationPickerMap and is loaded lazily, only after an editor clicks "Xəritədə seç".
  */
-import { useEffect, useId, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { Component, Suspense, lazy, useEffect, useId, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
 import { set, unset, type ObjectInputProps } from "sanity";
 import { Box, Button, Card, Flex, Label, Stack, Text, TextInput } from "@sanity/ui";
 import { isValidCoordinate } from "../../lib/geo.ts";
+import { MAP_MESSAGES } from "../../lib/map-config.ts";
 import { MESSAGES, formatCoord, parseCoordinate, parseCoordinatePair, readPoint, roundCoord, toGeopoint } from "../../lib/location-validation.ts";
+
+const LocationPickerMap = lazy(() => import("./LocationPickerMap"));
+
+/** If the map chunk cannot load, only the map area shows a message; the coordinate boxes keep working. */
+class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed ? <Card padding={3} radius={2} tone="critical" border role="alert"><Text size={1}>{MAP_MESSAGES.crashed}</Text></Card> : this.props.children;
+  }
+}
 
 export default function PropertyLocationInput(props: ObjectInputProps) {
   const { value, onChange, readOnly } = props;
@@ -19,6 +32,7 @@ export default function PropertyLocationInput(props: ObjectInputProps) {
   const [touched, setTouched] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const lat = point?.lat, lng = point?.lng;
 
   // Keep the boxes in step when the stored value changes from outside (undo / redo / another editor),
@@ -61,6 +75,14 @@ export default function PropertyLocationInput(props: ObjectInputProps) {
     setPasteError(null); setTouched(true); setPasteText("");
     setLatText(formatCoord(r.lat)); setLngText(formatCoord(r.lng));
     onChange(set(toGeopoint(r.lat, r.lng)));
+  };
+  /** A position chosen on the map (click or drag): validate, round to 6 decimals, show it in the boxes and save it. */
+  const pickFromMap = (la: number, ln: number) => {
+    const g = toGeopoint(la, ln);
+    if (!isValidCoordinate(g.lat, g.lng)) return;
+    setTouched(true); setPasteError(null);
+    setLatText(formatCoord(g.lat)); setLngText(formatCoord(g.lng));
+    if (!(point && point.lat === g.lat && point.lng === g.lng)) onChange(set(g));
   };
   const clear = () => {
     setLatText(""); setLngText(""); setPasteText(""); setPasteError(null); setTouched(false);
@@ -105,9 +127,17 @@ export default function PropertyLocationInput(props: ObjectInputProps) {
         {pasteError && <Card id={`${id}-paste-err`} role="alert" padding={2} radius={2} tone="critical"><Text size={1}>{pasteError}</Text></Card>}
       </Stack>
 
-      <Flex>
+      <Flex gap={2}>
+        <Button text={mapOpen ? MAP_MESSAGES.close : MAP_MESSAGES.open} mode="ghost" onClick={() => setMapOpen((v) => !v)} aria-expanded={mapOpen} />
         <Button text="Pini sil" tone="critical" mode="ghost" disabled={readOnly || (!hasValue && latText === "" && lngText === "")} onClick={clear} />
       </Flex>
+      {mapOpen && (
+        <MapErrorBoundary>
+          <Suspense fallback={<Card padding={3} radius={2} border role="status"><Text size={1}>{MAP_MESSAGES.loading}</Text></Card>}>
+            <LocationPickerMap point={point} readOnly={readOnly} onPick={pickFromMap} />
+          </Suspense>
+        </MapErrorBoundary>
+      )}
       <Text size={1} muted>Koordinatları xəritə xidmətindən kopyalayıb yuxarıdakı xanaya yapışdıra bilərsiniz (əvvəl enlik, sonra uzunluq).</Text>
     </Stack>
   );
