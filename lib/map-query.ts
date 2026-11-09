@@ -8,7 +8,7 @@
  * 3. Listings without coordinates are never returned as map results; they are only COUNTED (missingCoords).
  * The query never selects contactPhone.
  */
-import { FILTER, buildParams } from "./query.ts";
+import { FILTER, PAGE_SIZE, buildParams } from "./query.ts";
 import type { SearchParams } from "./search.ts";
 import type { Property } from "./property-utils.ts";
 import { AZ_BOUNDS, filterInPolygon, isValidBBox, polygonBBox, type BBox, type GeoPolygon } from "./geo.ts";
@@ -52,4 +52,16 @@ export function resolveMapResults(raw: MapRaw, polygon?: GeoPolygon | null): Map
   const items = (polygon ? filterInPolygon(rows, polygon) : rows.filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng))) as MapProperty[];
   const inBox = Number.isFinite(raw.inBox) ? raw.inBox : rows.length;
   return { items, total: items.length, inBox, missingCoords: Number.isFinite(raw.missingCoords) ? raw.missingCoords : 0, truncated: inBox > rows.length };
+}
+
+/**
+ * Listing cards for a draw-to-search area (exact polygon filtering). The rows come from the map result (MAP_PROJECTION is a
+ * superset of the card projection and uses the same order as the listing query), so cards and map always agree.
+ * Paging happens here because the exact polygon test runs in code, after GROQ. Limited by MAP_LIMIT: check result.truncated.
+ */
+export function pagePolygonResults(result: MapResult, page: number, pageSize: number = PAGE_SIZE): { rows: MapProperty[]; total: number } {
+  const size = Number.isFinite(pageSize) && pageSize >= 1 ? Math.floor(pageSize) : PAGE_SIZE;
+  const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  const from = (p - 1) * size;
+  return { rows: result.items.slice(from, from + size), total: result.total };
 }

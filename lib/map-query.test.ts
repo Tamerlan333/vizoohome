@@ -1,6 +1,6 @@
 import test from "node:test"; import assert from "node:assert/strict"; import fs from "node:fs";
-import { MAP_FIELDS, MAP_LIMIT, MAP_PROJECTION, MAP_QUERY, buildMapParams, resolveMapResults, type MapProperty, type MapRaw } from "./map-query.ts";
-import { FILTER } from "./query.ts"; import { parseSearch } from "./search.ts"; import { AZ_BOUNDS, validatePolygon, type GeoPolygon, type LngLat } from "./geo.ts";
+import { MAP_FIELDS, MAP_LIMIT, MAP_PROJECTION, MAP_QUERY, buildMapParams, pagePolygonResults, resolveMapResults, type MapProperty, type MapRaw } from "./map-query.ts";
+import { FILTER, PAGE_SIZE } from "./query.ts"; import { parseSearch } from "./search.ts"; import { AZ_BOUNDS, validatePolygon, type GeoPolygon, type LngLat } from "./geo.ts";
 const SQ: LngLat[] = [[49.80, 40.30], [49.90, 40.30], [49.90, 40.50], [49.80, 40.50]];
 const polygon = (ring: LngLat[]): GeoPolygon => { const r = validatePolygon({ type: "Polygon", coordinates: [ring] }); assert.ok(r.ok); return (r as { polygon: GeoPolygon }).polygon; };
 let groq: { parse: (q: string, o: object) => unknown; evaluate: (t: unknown, o: object) => Promise<{ get(): Promise<unknown> }> } | null = null;
@@ -54,3 +54,21 @@ test("REAL GROQ (groq-js engine): filters + polygon, missing-coordinate count, p
   // nothing matches -> empty, not an error
   const none = resolveMapResults(await run(MAP_QUERY, buildMapParams(parseSearch({ transaction: "rent", rooms: "5" }), pg), ds), pg); assert.deepEqual([none.total, none.inBox], [0, 0]);
 });
+
+test("pagePolygonResults: cards for a drawn area are the exact polygon matches, in the map order, split into pages", () => {
+  const row = (i: number): MapProperty => ({ _id: "p" + i, slug: "p" + i, title: { az: "p" + i }, transaction: "sale", propertyType: "apartment", cityId: "city-baki", price: 1, currency: "AZN", lat: 40.35, lng: 49.82 } as never);
+  const items = Array.from({ length: 30 }, (_, i) => row(i)); const result = { items, total: 30, inBox: 34, missingCoords: 2, truncated: false };
+  assert.equal(PAGE_SIZE, 12);
+  const p1 = pagePolygonResults(result, 1); assert.deepEqual(p1.rows.map((r) => r._id), items.slice(0, 12).map((r) => r._id)); assert.equal(p1.total, 30, "total = exact matches, not the box count");
+  assert.deepEqual(pagePolygonResults(result, 3).rows.map((r) => r._id), ["p24", "p25", "p26", "p27", "p28", "p29"]);
+  assert.deepEqual(pagePolygonResults(result, 4).rows, [], "past the end: empty page, same total");
+  for (const bad of [0, -2, NaN, Infinity]) assert.deepEqual(pagePolygonResults(result, bad).rows.map((r) => r._id), p1.rows.map((r) => r._id), "bad page -> page 1: " + bad);
+  assert.equal(pagePolygonResults(result, 2.7).rows[0]._id, "p12", "fractional page is floored");
+  assert.equal(pagePolygonResults(result, 1, 5).rows.length, 5); assert.equal(pagePolygonResults(result, 1, 0).rows.length, 12, "bad page size -> PAGE_SIZE");
+  assert.deepEqual(pagePolygonResults({ ...result, items: [], total: 0 }, 1), { rows: [], total: 0 }); });
+
+test("pagePolygonResults uses the output of resolveMapResults (exact polygon test applied before paging)", () => {
+  const row = (id: string, lat: number, lng: number): MapProperty => ({ _id: id, slug: id, title: { az: id }, lat, lng } as never);
+  const L: LngLat[] = [[49.80, 40.30], [49.90, 40.30], [49.90, 40.40], [49.85, 40.40], [49.85, 40.50], [49.80, 40.50]];
+  const res = resolveMapResults({ items: [row("a", 40.35, 49.82), row("notch", 40.45, 49.88), row("b", 40.45, 49.82)], inBox: 3, missingCoords: 0 }, polygon(L));
+  assert.deepEqual(pagePolygonResults(res, 1), { rows: [res.items[0], res.items[1]], total: 2 }); assert.deepEqual(res.items.map((i) => i._id), ["a", "b"]); });

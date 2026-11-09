@@ -23,12 +23,15 @@ test("input component: replaces only this field's input, writes geopoint lat/lng
   assert.equal((c.match(/<Label as="label"/g) ?? []).length, 3, "real <label> elements (Sanity's Label renders a div unless as=\"label\")");
   assert.ok(c.includes('lazy(() => import("./LocationPickerMap"))'), "the map loads on demand"); assert.ok(!/from "maplibre-gl"|import\("maplibre-gl"\)/.test(c), "the input itself never imports the map library");
   assert.ok(!/terra-draw|turf|google/i.test(c)); assert.ok(!/\balt\b/.test(c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")), "no altitude"); });
-test("dependencies: no drawing/geometry packages yet; maplibre-gl, if installed, is pinned exactly; imports stay inside react, sanity, @sanity/ui, maplibre-gl", () => {
+test("dependencies: only the approved draw-to-search packages (terra-draw + its MapLibre adapter); maplibre-gl, if installed, is pinned exactly; Studio imports stay inside react, sanity, @sanity/ui, maplibre-gl", () => {
   const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-  for (const n of Object.keys(deps)) assert.ok(!/terra-draw|turf/i.test(n), "not part of B2: " + n);
+  const DRAW = ["terra-draw", "terra-draw-maplibre-gl-adapter"];   // public map only; the Studio pin picker must not use them (see the import checks below)
+  for (const n of Object.keys(deps)) assert.ok(!/turf/i.test(n) && (!/terra-draw/i.test(n) || DRAW.includes(n)), "unapproved drawing/geometry package: " + n);
+  for (const n of DRAW) if (deps[n] !== undefined) { assert.ok(pkg.dependencies?.[n], n + " belongs in dependencies (it runs in the browser)"); assert.equal(pkg.devDependencies?.[n], undefined); }
   if (pkg.dependencies?.["maplibre-gl"] !== undefined) assert.match(pkg.dependencies["maplibre-gl"], /^\d+\.\d+\.\d+$/, "exact version, no ^ or ~");
   assert.equal(pkg.devDependencies?.["maplibre-gl"], undefined, "maplibre-gl belongs in dependencies");
-  const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8")); assert.equal(Object.keys(lock.packages).filter((k) => /terra-draw|turf/i.test(k)).length, 0);
+  const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+  assert.deepEqual(Object.keys(lock.packages).filter((k) => /terra-draw|turf/i.test(k)).sort(), DRAW.filter((n) => deps[n] !== undefined).map((n) => "node_modules/" + n).sort(), "the lockfile holds exactly the approved drawing packages");
   assert.ok(lock.packages["node_modules/@sanity/ui"], "@sanity/ui is installed (Sanity itself depends on it)");
   const ext = (f: string) => [...fs.readFileSync(f, "utf8").matchAll(/from "([^"]+)"/g)].map((m) => m[1]).filter((m) => !m.startsWith(".")).sort();
   assert.deepEqual(ext("sanity/components/PropertyLocationInput.tsx"), ["@sanity/ui", "react", "sanity"]); assert.deepEqual(ext("sanity/components/LocationPickerMap.tsx"), ["@sanity/ui", "maplibre-gl", "react"]); });

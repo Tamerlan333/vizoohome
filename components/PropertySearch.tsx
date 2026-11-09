@@ -7,12 +7,13 @@ import AdvancedFilters from "./AdvancedFilters";
 import { countActive, emptyAdvancedForm, formFromFilters, serializeAdvanced, validateAdvanced, type AdvancedFilters as AdvFilters } from "@/lib/advanced-filters";
 import { emptySelection, normalize, serializeSelection, type Selection } from "@/lib/location-selection";
 import { useI18n } from "@/lib/i18n/client";
+import { polygonToParam, type GeoPolygon } from "@/lib/geo";
 const TYPES = [["", "search.allTypes", LayoutGrid], ["apartment", "ty.apartment", Building2], ["yard-house", "ty.yard-house", Home], ["land", "ty.land", Mountain], ["commercial", "ty.commercial", Store], ["other", "ty.other", Boxes]] as const;
 const BUILDINGS = [["new", "bt.new", Sparkles], ["old", "bt.old", Landmark]] as const;
 const inp = "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink";
 const tile = (on: boolean) => `flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition duration-150 ${on ? "scale-[1.02] border-amber bg-amber/10 font-semibold text-navy" : "border-line bg-white hover:bg-soft"}`;
 const sticker = (on: boolean) => `grid h-6 w-6 place-items-center rounded-md transition-colors duration-150 ${on ? "bg-amber/25 text-navy" : "bg-navy/10 text-navy"}`;
-export interface Initial extends Partial<AdvFilters> { transaction?: string; city?: string; districts?: string[]; settlements?: string[]; metro?: string[]; type?: string; building?: string; rooms?: number; minPrice?: number; maxPrice?: number }
+export interface Initial extends Partial<AdvFilters> { transaction?: string; city?: string; districts?: string[]; settlements?: string[]; metro?: string[]; type?: string; building?: string; rooms?: number; minPrice?: number; maxPrice?: number; polygon?: GeoPolygon }
 export default function PropertySearch({ initial = {} }: { initial?: Initial }) {
   const { t } = useI18n(); const r = useRouter();
   const [tx, setTx] = useState(initial.transaction === "rent" ? "rent" : "sale");
@@ -28,6 +29,7 @@ export default function PropertySearch({ initial = {} }: { initial?: Initial }) 
     const ae = validateAdvanced(adv, { land }); if (ae.area || ae.floor) { setAdvOpen(true); return; }
     setErr(""); const q = new URLSearchParams({ transaction: tx });
     Object.entries({ ...serializeSelection(sel), type, building: land ? "" : building, rooms: land ? "" : rooms, minPrice: mn, maxPrice: mx, ...serializeAdvanced(adv, { land }) }).forEach(([k, v]) => v && q.set(k, v));
+    if (initial.polygon) q.set("poly", polygonToParam(initial.polygon)); // keep the area drawn on the map
     r.push(`/properties?${q}`);
   }
   function reset() { setTx("sale"); setSel(emptySelection()); setType(""); setBuilding(""); setRooms(""); setMn(""); setMx(""); setErr(""); setAdv(emptyAdvancedForm()); setAdvOpen(false); r.push("/properties"); }

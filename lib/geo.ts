@@ -147,3 +147,78 @@ export function polygonFromParam(value: unknown): PolygonResult {
   }
   return validatePolygon({ type: "Polygon", coordinates: [ring] });
 }
+
+/* ---- Draw-to-search helpers (Stage 1 of the drawing UI). Additions only: nothing above changes behaviour. ---- */
+
+/** Decimals kept for a drawn search area. Matches the URL form (polygonToParam) and stays within Terra Draw's coordinate precision (9). */
+export const AREA_DECIMALS = 5;
+
+const segDist = (p: readonly number[], a: readonly number[], b: readonly number[]): number => {
+  const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2));
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+};
+function douglasPeucker(points: readonly (readonly number[])[], tolerance: number): number[] {
+  const n = points.length, keep = new Uint8Array(n); keep[0] = 1; keep[n - 1] = 1;
+  const stack: [number, number][] = [[0, n - 1]];                              // iterative: long freehand strokes cannot overflow the call stack
+  while (stack.length) {
+    const [s, e] = stack.pop()!; let maxD = -1, idx = -1;
+    for (let i = s + 1; i < e; i++) { const d = segDist(points[i], points[s], points[e]); if (d > maxD) { maxD = d; idx = i; } }
+    if (idx !== -1 && maxD > tolerance) { keep[idx] = 1; stack.push([s, idx], [idx, e]); }
+  }
+  const out: number[] = []; for (let i = 0; i < n; i++) if (keep[i]) out.push(i);
+  return out;
+}
+/**
+ * Douglas-Peucker simplification of an open path in any planar unit (use screen pixels for freehand strokes).
+ * Returns the INDICES of the kept points (first and last are always kept), so callers can map back to [lng, lat].
+ * With maxPoints the tolerance is doubled until the result fits. Non-finite points are skipped.
+ */
+export function simplifyPathIndices(points: readonly (readonly number[])[], tolerance: number, maxPoints?: number): number[] {
+  const valid: number[] = [];
+  for (let i = 0; i < points.length; i++) { const p = points[i]; if (Array.isArray(p) && isFiniteNumber(p[0]) && isFiniteNumber(p[1])) valid.push(i); }
+  if (valid.length <= 2) return valid;
+  const pts = valid.map((i) => points[i]);
+  let tol = isFiniteNumber(tolerance) && tolerance > 0 ? tolerance : 0;
+  const limit = isFiniteNumber(maxPoints) && maxPoints >= 2 ? Math.floor(maxPoints) : Infinity;
+  let kept = douglasPeucker(pts, tol);
+  for (let guard = 0; kept.length > limit && guard < 60; guard++) { tol = tol > 0 ? tol * 2 : 1e-9; kept = douglasPeucker(pts, tol); }
+  return kept.map((k) => valid[k]);
+}
+/** Convenience wrapper around simplifyPathIndices that returns the kept points themselves. */
+export function simplifyPath<T extends readonly number[]>(points: readonly T[], tolerance: number, maxPoints?: number): T[] {
+  return simplifyPathIndices(points, tolerance, maxPoints).map((i) => points[i]);
+}
+
+/** Rounds every coordinate the same way polygonToParam does (toFixed), so the URL round trip is exact. */
+export const roundCoord = (v: number, decimals: number = AREA_DECIMALS): number => Number(v.toFixed(decimals));
+export function roundRing(ring: readonly LngLat[], decimals: number = AREA_DECIMALS): LngLat[] {
+  return ring.map(([lng, lat]) => [roundCoord(lng, decimals), roundCoord(lat, decimals)] as LngLat);
+}
+
+/** True when every vertex lies inside the box (default: Azerbaijan's rough bounding box, which also touches small parts of neighbouring countries). */
+export function polygonWithinBounds(poly: GeoPolygon, bounds: BBox = AZ_BOUNDS): boolean {
+  const ring = poly.coordinates[0] ?? [];
+  if (ring.length === 0) return false;
+  return ring.every(([lng, lat]) => isFiniteNumber(lng) && isFiniteNumber(lat) && lng >= bounds[0] && lng <= bounds[2] && lat >= bounds[1] && lat <= bounds[3]);
+}
+
+export type SearchAreaError = PolygonError | "outside_region";
+export type SearchAreaResult = { ok: true; polygon: GeoPolygon } | { ok: false; error: SearchAreaError };
+/**
+ * Full check for a polygon the user drew on the public map, BEFORE it is stored or written to the URL:
+ * 1. validatePolygon on the input; 2. round to AREA_DECIMALS and validate again (rounding can merge points or create a crossing);
+ * 3. every vertex inside AZ_BOUNDS; 4. the URL round trip (polygonToParam -> polygonFromParam) must succeed, so the server accepts exactly this polygon.
+ * Returns the rounded, closed polygon.
+ */
+export function validateSearchArea(input: unknown): SearchAreaResult {
+  const first = validatePolygon(input);
+  if (!first.ok) return first;
+  const rounded = validatePolygon({ type: "Polygon", coordinates: [roundRing(first.polygon.coordinates[0])] });
+  if (!rounded.ok) return rounded;
+  if (!polygonWithinBounds(rounded.polygon)) return { ok: false, error: "outside_region" };
+  const back = polygonFromParam(polygonToParam(rounded.polygon));
+  if (!back.ok) return back;
+  return { ok: true, polygon: rounded.polygon };
+}
