@@ -130,6 +130,8 @@ const R: [string, string, string, string][] = [
 ["map.status.editing", "Redaktə rejimi · {area}", "Режим редактирования · {area}", "Editing · {area}"],
 ["map.status.updating", "Nəticələr yenilənir…", "Обновляем результаты…", "Updating results…"],
 ["map.status.cleared", "Ərazi silindi.", "Область удалена.", "Area cleared."],
+["map.empty.title", "Ərazinizi seçin", "Выберите район", "Select your area"],
+["map.empty.body", "Xəritədə maraqlandığınız ərazini çəkin. Həmin ərazidəki elanlar burada görünəcək.", "Обведите на карте интересующий вас район. Объявления из этого района появятся здесь.", "Draw the area you are interested in on the map. Listings in that area will appear here."],
 ["map.info.reverted", "Son düzgün ərazi bərpa edildi.", "Восстановлена последняя корректная область.", "The last valid area was restored."],
 ["map.err.not_polygon", "Ərazi düzgün çəkilməyib. Yenidən cəhd edin.", "Область нарисована неверно. Попробуйте ещё раз.", "The area could not be read. Please try again."],
 ["map.err.holes_not_supported", "Ərazinin daxilində boşluq ola bilməz.", "Область не может содержать отверстий.", "The area cannot contain holes."],

@@ -30,6 +30,8 @@ import {
   type DrawState,
 } from "@/lib/draw-controller";
 import { useI18n } from "@/lib/i18n/client";
+import { areaResultsState, cancelsAreaWrite, urlSyncAction } from "@/lib/area-results";
+import { useAreaSelection } from "@/components/AreaResults";
 
 export interface PropertyMapItem {
   _id: string;
@@ -78,6 +80,9 @@ const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: 
 const LOCALES: Record<string, string> = { az: "az-AZ", ru: "ru-RU", en: "en-US" };
 /** Edits are written to the URL after this pause, so dragging several vertices causes one navigation. */
 const URL_DEBOUNCE_MS = 350;
+/** Sent by PropertySearch right before it navigates (same name there; a test checks they match). */
+const AREA_SYNC_EVENT = "vh:area-sync";
+type AreaSyncDetail = { reason: "reset" | "submit"; poly?: string };
 
 const lineFeature = (kind: string, coordinates: LngLat[]): GeoJSON.Feature => ({
   type: "Feature",
@@ -125,6 +130,12 @@ export default function PropertyMap({
   const paramRef = useRef("");
   /** Values this component wrote recently: when the server echoes an older one back, it must not replace a newer edit. */
   const writtenRef = useRef(new Set<string>());
+  /** True while a URL write is waiting for its debounce; the navigation itself is tracked by `updating`. */
+  const urlPendingRef = useRef(false);
+  /** Shares the area the map holds with the listing section (AreaResults), so results follow it without waiting for the server. */
+  const areaSelection = useAreaSelection();
+  const publishRef = useRef(areaSelection?.setClientParam);
+  publishRef.current = areaSelection?.setClientParam;
   const [updating, startTransition] = useTransition();
 
   const [status, setStatus] = useState<MapStatus>("loading");
@@ -336,10 +347,13 @@ export default function PropertyMap({
       if (param === paramRef.current) return;
       paramRef.current = param;
       writtenRef.current.add(param);
+      publishRef.current?.(param);                      // results react now (hide on clear); the URL follows after the debounce
 
       if (urlTimer) clearTimeout(urlTimer);
+      urlPendingRef.current = true;
       urlTimer = setTimeout(() => {
         urlTimer = null;
+        urlPendingRef.current = false;                  // from here on the transition (`updating`) covers the write
         const params = new URLSearchParams(window.location.search);
         if (param) params.set("poly", param);
         else params.delete("poly");
@@ -503,6 +517,13 @@ export default function PropertyMap({
         commit(null);
       },
       applyExternal(polygon) {
+        // An outside URL change (Reset, link, Back/Forward) wins: drop this map's pending delayed URL write first,
+        // otherwise it would fire afterwards and put the replaced area back into the URL.
+        if (urlTimer) {
+          clearTimeout(urlTimer);
+          urlTimer = null;
+        }
+        urlPendingRef.current = false;
         if (!draw) return;
         if (uiRef.current === "drawing") {
           controller?.cancel();
@@ -518,6 +539,7 @@ export default function PropertyMap({
 
         if (!polygon) {
           setArea(null);
+          publishRef.current?.("");
           return;
         }
 
@@ -527,6 +549,7 @@ export default function PropertyMap({
         const checked = validateSearchArea(polygon);
         if (!checked.ok) {
           setArea(null);
+          publishRef.current?.("");                     // no area on the map: show no listings either
           setNotice({ kind: "error", key: `map.err.${checked.error}` });
           return;
         }
@@ -541,6 +564,7 @@ export default function PropertyMap({
         ]);
         if (added.length === 0 || added.some((item) => !item.valid)) {
           setArea(null);
+          publishRef.current?.("");
           setNotice({ kind: "error", key: "map.err.add" });
           return;
         }
@@ -548,6 +572,7 @@ export default function PropertyMap({
         featureId = findAreaFeature(draw)?.id ?? null;
         lastValid = shown;
         setArea(shown);
+        publishRef.current?.(paramRef.current);         // the URL's own value: the server rendered the results for it
         setUi("done");
         fitToArea(shown);
       },
@@ -748,16 +773,59 @@ export default function PropertyMap({
       }
     }
 
+    // The search form is about to navigate (Reset or filter submit). Runs synchronously BEFORE that navigation starts:
+    // drop the pending delayed URL write so it can never override the form's navigation, however slow its response.
+    // Reset: also clear the map now, WITHOUT writing a URL (Reset's own navigation does that; a write here could restore
+    // the old filters). Needed when the area was never written: Reset then lands on the same URL and nothing else
+    // would clear it. Submit: answer with the map's latest area, so the form's URL carries it.
+    function onAreaSync(event: Event) {
+      const detail = (event as CustomEvent<AreaSyncDetail>).detail;
+      if (!detail) return;
+      if (urlTimer) {
+        clearTimeout(urlTimer);
+        urlTimer = null;
+      }
+      urlPendingRef.current = false;
+      // Only a ready map holds its own area; before that the form keeps the server's area and the URL decides.
+      if (apiRef.current !== api) return;
+      if (detail.reason === "reset") api.applyExternal(null);
+      else detail.poly = paramRef.current;
+    }
+    window.addEventListener(AREA_SYNC_EVENT, onAreaSync);
+
+    // A same-site link click (header Buy/Rent, "Ərazini sil", no-results Reset, pagination...) starts a navigation.
+    // Capture phase on window: runs before React and before next/link navigates, so the pending delayed URL write is
+    // dropped before it could fire later and override that navigation. The area itself is left alone: the
+    // destination page decides (URL -> map effect below).
+    function onLinkClick(event: MouseEvent) {
+      if (!urlTimer) return;
+      const target = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(target instanceof HTMLAnchorElement)) return;
+      const navigates = cancelsAreaWrite({
+        button: event.button, metaKey: event.metaKey, ctrlKey: event.ctrlKey, shiftKey: event.shiftKey, altKey: event.altKey,
+        defaultPrevented: event.defaultPrevented, href: target.href, target: target.target,
+        download: target.hasAttribute("download"), currentHref: window.location.href,
+      });
+      if (!navigates) return;
+      clearTimeout(urlTimer);
+      urlTimer = null;
+      urlPendingRef.current = false;
+    }
+    window.addEventListener("click", onLinkClick, true);
+
     void initializeMap();
 
     return () => {
       cancelled = true;
+      window.removeEventListener(AREA_SYNC_EVENT, onAreaSync);
+      window.removeEventListener("click", onLinkClick, true);
       apiRef.current = null;
       uiRef.current = "idle";
       paramRef.current = "";
       writtenRef.current.clear();
 
       if (urlTimer) clearTimeout(urlTimer);           // leaving the page: drop a pending URL write
+      urlPendingRef.current = false;
       flashTimers.splice(0).forEach(clearTimeout);
       if (previewFrame) cancelAnimationFrame(previewFrame);
       detachPointer?.();
@@ -779,6 +847,12 @@ export default function PropertyMap({
     };
   }, [styleUrl]);
 
+  // Markers only for the results of the area currently on the map: none before an area is selected, none the moment
+  // it is cleared, and never the previous area's markers while a new area is being loaded.
+  const showMarkers =
+    !areaSelection ||
+    areaResultsState(areaSelection.clientParam, areaSelection.serverParam) === "ready";
+
   useEffect(() => {
     const map = mapRef.current;
     const ml = moduleRef.current;
@@ -787,6 +861,8 @@ export default function PropertyMap({
 
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
+
+    if (!showMarkers) return;
 
     for (const item of items) {
       if (
@@ -843,19 +919,29 @@ export default function PropertyMap({
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
     };
-  }, [items, status]);
+  }, [items, status, showMarkers]);
 
   // URL -> map. Runs when the map becomes ready (restores a shared/reloaded area) and when the server sends a
-  // different area (Reset, filter submit, hand-edited URL). Echoes of this component's own recent writes are ignored.
+  // different area (Reset, filter submit, hand-edited URL, Back/Forward). Echoes of this component's own older writes
+  // are ignored only while a newer write is still outstanding. While this component's own navigation runs
+  // (`updating`) nothing is decided (the server's area is still the old one); it is re-checked when that navigation
+  // ends, so a superseded write can never leave the results waiting for a response that will not come.
   const initialParam = initialPolygon ? polygonToParam(initialPolygon) : "";
   useEffect(() => {
-    if (status !== "ready") return;
-    if (initialParam === paramRef.current) {
+    if (status !== "ready" || updating) return;
+    const action = urlSyncAction(initialParam, paramRef.current, writtenRef.current, urlPendingRef.current);
+    if (action === "in-sync") {
       writtenRef.current.clear();
       return;
     }
-    if (writtenRef.current.has(initialParam)) return;
+    if (action === "ignore-echo") return;
+    writtenRef.current.clear();                       // the server's area wins: older own writes no longer matter
     apiRef.current?.applyExternal(initialPolygonRef.current ?? null);
+  }, [initialParam, status, updating]);
+
+  // While the map is not ready (loading, failed, missing key) it cannot hold its own area: the URL's area is the selection.
+  useEffect(() => {
+    if (status !== "ready") publishRef.current?.(initialParam);
   }, [initialParam, status]);
 
   // Markers sit above the map canvas: while drawing or editing they must not catch the pointer.
@@ -864,7 +950,7 @@ export default function PropertyMap({
     markersRef.current.forEach((marker) => {
       marker.getElement().style.pointerEvents = interactive ? "" : "none";
     });
-  }, [ui, items, status]);
+  }, [ui, items, status, showMarkers]);                 // showMarkers: markers can be re-created without new items
 
   // When the toolbar swaps its buttons (start/cancel/close), the focused button disappears:
   // move focus to the first button of the new toolbar instead of losing it to the page.
