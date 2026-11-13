@@ -12,12 +12,15 @@
  },
  "dependencies": {
   "lucide-react": "0.469.0",
+  "maplibre-gl": "5.24.0",
   "next": "15.1.11",
   "next-sanity": "^9.8.0",
   "react": "19.0.0",
   "react-dom": "19.0.0",
   "sanity": "^3.68.0",
-  "styled-components": "^6.1.0"
+  "styled-components": "^6.1.0",
+  "terra-draw": "^1.39.0",
+  "terra-draw-maplibre-gl-adapter": "^1.5.0"
  },
  "devDependencies": {
   "@playwright/test": "^1.49.0",
