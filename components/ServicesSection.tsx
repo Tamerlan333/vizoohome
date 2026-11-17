@@ -81,7 +81,6 @@ export default function ServicesSection() {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onEnd);
       window.removeEventListener("pointercancel", onEnd);
-      window.removeEventListener("scroll", end, true);
       window.removeEventListener("blur", end);
     };
     const onDown = (e: PointerEvent) => {
@@ -93,8 +92,10 @@ export default function ServicesSection() {
       setPressed(true);
       window.addEventListener("pointermove", onMove, opts);
       window.addEventListener("pointerup", onEnd, opts);
-      window.addEventListener("pointercancel", onEnd, opts); // fired when the browser takes over the gesture to scroll
-      window.addEventListener("scroll", end, { capture: true, passive: true }); // any scroll (page or inner) ends the press
+      // The browser fires pointercancel the moment it takes this gesture over as a scroll, which ends the press. There is
+      // deliberately no window "scroll" listener: leftover momentum-scroll events right after the finger lands would clear
+      // the orange state instantly and make a normal tap look like nothing happened.
+      window.addEventListener("pointercancel", onEnd, opts);
       window.addEventListener("blur", end); // e.g. the WhatsApp link opening another app or tab
     };
 
