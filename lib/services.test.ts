@@ -19,7 +19,8 @@ test("homepage: old banner replaced, new section in place, unrelated files untou
   const c = fs.readFileSync("components/ServicesSection.tsx", "utf8"); assert.ok(c.includes('target="_blank"') && c.includes('rel="noopener noreferrer"')); assert.equal((c.match(/serviceWhatsAppUrl\(/g) ?? []).length, 1); assert.ok(!/350|650/.test(c.replace(/price: "(350|650)"/g, "")), "package prices appear only in the data table"); });
 test("styles: reveal never leaves content hidden under reduced motion", () => {
   const css = fs.readFileSync("app/globals.css", "utf8"); assert.ok(/@media \(prefers-reduced-motion:reduce\)\{\*,\*::before,\*::after\{transition:none!important;animation:none!important/.test(css));
-  assert.ok(css.includes('.svc[data-shown="false"] .svc-card{opacity:0')); assert.ok(css.includes("backwards"), "hover transform must not be overridden by a filled animation"); });
+  assert.ok(css.includes(".svc-list>li:not([data-in]){opacity:0")); assert.ok(css.includes("@media (prefers-reduced-motion:reduce){.svc-list>li{opacity:1!important"), "reduced motion always shows the cards");
+  assert.ok(css.includes("backwards"), "hover transform must not be overridden by a filled animation"); assert.ok(!/\.svc-list>li[^{]*\{[^}]*\.svc-card/.test(css) && !/\.svc-card\{[^}]*animation/.test(css), "entry animates the <li>, hover animates the card"); });
 
 test("pricing: all three cards show promo price + struck-through original price, exact values", () => {
   const c = fs.readFileSync("components/ServicesSection.tsx", "utf8");

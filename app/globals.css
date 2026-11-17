@@ -18,11 +18,27 @@ body{color:#1E293B;background:#fff;font-family:Inter,system-ui,sans-serif}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
 /* ---- Services section (disabled automatically by the reduced-motion rule above) ---- */
-.svc[data-shown="false"] .svc-card{opacity:0;transform:translateY(16px)}
-.svc[data-shown="true"] .svc-card{animation:svc-in .55s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:calc(var(--i,0)*120ms)}
-@keyframes svc-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-.svc-card{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
-@media (hover:hover){.svc-card:hover{transform:translateY(-4px);box-shadow:0 18px 36px -18px #0B192C66;border-color:#CBD5E1}}
-.svc-premium{box-shadow:0 14px 34px -18px #FF9D2399}
-.svc-premium::before{content:"";position:absolute;inset:-1.5px;border-radius:inherit;padding:1.5px;pointer-events:none;background:linear-gradient(110deg,#FF9D23,#FFE0A6,#FF9D23,#FFC46B,#FF9D23);background-size:300% 100%;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:svc-shine 7s linear infinite}
-@keyframes svc-shine{to{background-position:-300% 0}}
+/* Entry runs on the <li> wrapper (opacity + transform only, compositor-friendly) so it never fights the card's hover transform.
+   ServicesSection sets data-in on each <li> once, when it first enters the viewport, so the animation plays a single time. */
+.svc-list>li:not([data-in]){opacity:0;transform:translateY(12px)}
+.svc-list>li[data-in]{animation:svc-in .6s cubic-bezier(.22,.61,.36,1) backwards;animation-delay:calc(var(--i,0)*90ms)}
+@keyframes svc-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.svc-list>li{opacity:1!important;transform:none!important}}
+/* One shared default look for all three cards; one shared orange hover (and keyboard focus-within) state.
+   Both shadows sit on pseudo-elements and are cross-faded with opacity instead of transitioning box-shadow (a large repaint every frame).
+   inset:-1px matches the 1px border, so the shadows start at the border edge exactly as a box-shadow on the card would. */
+.svc-card{border-color:#E2E8F0;transition:transform .3s cubic-bezier(.22,.61,.36,1),border-color .3s ease}
+.svc-card::before,.svc-card::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;transition:opacity .3s ease}
+.svc-card::before{box-shadow:0 1px 2px #0B192C0D,0 8px 24px -16px #0B192C26}
+.svc-card::after{box-shadow:0 1px 2px #0B192C0D,0 18px 36px -20px #FF9D2380;opacity:0}
+.svc-btn{background:#0B192C;color:#fff;transition:background-color .3s ease,color .3s ease,transform .15s ease}
+.svc-card:focus-within{border-color:#FF9D23}
+.svc-card:focus-within::before{opacity:0}
+.svc-card:focus-within::after{opacity:1}
+.svc-card:focus-within .svc-btn{background:#FF9D23;color:#0B192C}
+@media (hover:hover){
+.svc-card:hover{transform:translateY(-3px);border-color:#FF9D23}
+.svc-card:hover::before{opacity:0}
+.svc-card:hover::after{opacity:1}
+.svc-card:hover .svc-btn{background:#FF9D23;color:#0B192C}
+}
