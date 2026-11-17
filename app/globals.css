@@ -32,13 +32,29 @@ body{color:#1E293B;background:#fff;font-family:Inter,system-ui,sans-serif}
 .svc-card::before{box-shadow:0 1px 2px #0B192C0D,0 8px 24px -16px #0B192C26}
 .svc-card::after{box-shadow:0 1px 2px #0B192C0D,0 18px 36px -20px #FF9D2380;opacity:0}
 .svc-btn{background:#0B192C;color:#fff;transition:background-color .3s ease,color .3s ease,transform .15s ease}
+@media (hover:hover){
 .svc-card:focus-within{border-color:#FF9D23}
 .svc-card:focus-within::before{opacity:0}
 .svc-card:focus-within::after{opacity:1}
 .svc-card:focus-within .svc-btn{background:#FF9D23;color:#0B192C}
-@media (hover:hover){
 .svc-card:hover{transform:translateY(-3px);border-color:#FF9D23}
 .svc-card:hover::before{opacity:0}
 .svc-card:hover::after{opacity:1}
 .svc-card:hover .svc-btn{background:#FF9D23;color:#0B192C}
+}
+/* Touch screens: the same orange state, shown only while a finger is on the card and inside it. ServicesSection sets
+   data-pressed from Pointer Events and clears it on lift, cancel, scroll, or when the finger leaves the card, so a tap never
+   leaves it behind. Release snaps back at once (0s). The press fades in over .15s. A tapped link keeps focus, so keyboard
+   focus here uses :focus-visible (external keyboards only) instead of :focus-within, which would leave the card orange after a tap. */
+@media (hover:none){
+.svc-card,.svc-card::before,.svc-card::after{transition-duration:0s}
+.svc-btn{transition:background-color 0s,color 0s,transform .15s ease}
+.svc-card[data-pressed]{transform:translateY(-3px);border-color:#FF9D23;transition-duration:.15s}
+.svc-card[data-pressed]::before{opacity:0;transition-duration:.15s}
+.svc-card[data-pressed]::after{opacity:1;transition-duration:.15s}
+.svc-card[data-pressed] .svc-btn{background:#FF9D23;color:#0B192C;transition-duration:.15s}
+.svc-card:has(:focus-visible){border-color:#FF9D23}
+.svc-card:has(:focus-visible)::before{opacity:0}
+.svc-card:has(:focus-visible)::after{opacity:1}
+.svc-card:has(:focus-visible) .svc-btn{background:#FF9D23;color:#0B192C}
 }

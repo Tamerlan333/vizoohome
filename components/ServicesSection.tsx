@@ -49,6 +49,62 @@ export default function ServicesSection() {
     return () => io.disconnect();
   }, []);
 
+  // Touch press state: the orange look shows only while one finger is down and inside the card it started on.
+  // It is a data-pressed attribute written straight to the DOM (no React state). Every listener is passive and never calls
+  // preventDefault, so scrolling, links, and text selection behave as normal. Mouse and pen input are ignored (desktop
+  // hover is pure CSS), and the matching CSS only applies on touch screens.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    let pointerId: number | null = null;
+    let card: HTMLElement | null = null;
+    let rect: DOMRect | null = null;
+
+    const setPressed = (on: boolean) => {
+      if (!card || card.hasAttribute("data-pressed") === on) return; // touch the DOM only when the state changes
+      card.toggleAttribute("data-pressed", on);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId || !rect) return;
+      // Touch pointers are usually captured implicitly by the element they started on, so pointerleave/pointerenter can't be
+      // trusted to fire while the finger is down. Instead, test the finger position against the card's box on every move:
+      // outside clears the orange state, back inside restores it.
+      const { clientX: x, clientY: y } = e;
+      setPressed(x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
+    };
+    const onEnd = (e: PointerEvent) => { if (e.pointerId === pointerId) end(); };
+    const opts = { passive: true } as const;
+    // Move/end listeners live on window and exist only during a press, so they work with or without pointer capture.
+    const end = () => {
+      setPressed(false);
+      pointerId = null; card = null; rect = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+      window.removeEventListener("scroll", end, true);
+      window.removeEventListener("blur", end);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch" || !e.isPrimary || pointerId !== null) return; // only the first finger counts
+      const target = (e.target as Element).closest<HTMLElement>(".svc-card");
+      if (!target || !list.contains(target)) return;
+      pointerId = e.pointerId; card = target;
+      rect = target.getBoundingClientRect(); // one layout read per press, taken before the lift transform applies
+      setPressed(true);
+      window.addEventListener("pointermove", onMove, opts);
+      window.addEventListener("pointerup", onEnd, opts);
+      window.addEventListener("pointercancel", onEnd, opts); // fired when the browser takes over the gesture to scroll
+      window.addEventListener("scroll", end, { capture: true, passive: true }); // any scroll (page or inner) ends the press
+      window.addEventListener("blur", end); // e.g. the WhatsApp link opening another app or tab
+    };
+
+    list.addEventListener("pointerdown", onDown, opts);
+    return () => {
+      end();
+      list.removeEventListener("pointerdown", onDown);
+    };
+  }, []);
+
   return (
     <section aria-labelledby="svc-title" className="svc mx-auto mt-16 max-w-site px-4 md:px-10">
       <noscript><style>{".svc-list>li{opacity:1!important;transform:none!important}"}</style></noscript>
