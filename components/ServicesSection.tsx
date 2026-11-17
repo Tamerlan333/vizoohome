@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Building2, Camera, Handshake, MessageCircle } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { serviceWhatsAppUrl, type ServiceKey } from "@/lib/whatsapp";
+import { createPressTracker } from "@/lib/servicesTouch";
 
 // Prices are display-only. They are never part of a WhatsApp message or URL.
 // price = current promotional price (main), was = original price (struck through).
@@ -49,60 +50,51 @@ export default function ServicesSection() {
     return () => io.disconnect();
   }, []);
 
-  // Touch press state: the orange look shows only while one finger is down and inside the card it started on.
-  // It is a data-pressed attribute written straight to the DOM (no React state). Every listener is passive and never calls
-  // preventDefault, so scrolling, links, and text selection behave as normal. Mouse and pen input are ignored (desktop
-  // hover is pure CSS), and the matching CSS only applies on touch screens.
+  // Touch press state (logic in lib/servicesTouch.ts): the card is orange from touchstart until touchend/touchcancel while
+  // the finger is inside it, and the press ends once the page actually scrolls. It is a data-pressed attribute written
+  // straight to the DOM (no React state). Every listener is passive and never calls preventDefault, so scrolling, links,
+  // and text selection behave as normal. Mouse input fires no touch events (desktop hover is pure CSS), and the matching
+  // CSS only applies on touch screens.
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    let pointerId: number | null = null;
-    let card: HTMLElement | null = null;
-    let rect: DOMRect | null = null;
-
-    const setPressed = (on: boolean) => {
-      if (!card || card.hasAttribute("data-pressed") === on) return; // touch the DOM only when the state changes
-      card.toggleAttribute("data-pressed", on);
-    };
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerId !== pointerId || !rect) return;
-      // Touch pointers are usually captured implicitly by the element they started on, so pointerleave/pointerenter can't be
-      // trusted to fire while the finger is down. Instead, test the finger position against the card's box on every move:
-      // outside clears the orange state, back inside restores it.
-      const { clientX: x, clientY: y } = e;
-      setPressed(x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
-    };
-    const onEnd = (e: PointerEvent) => { if (e.pointerId === pointerId) end(); };
     const opts = { passive: true } as const;
-    // Move/end listeners live on window and exist only during a press, so they work with or without pointer capture.
-    const end = () => {
-      setPressed(false);
-      pointerId = null; card = null; rect = null;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onEnd);
-      window.removeEventListener("pointercancel", onEnd);
-      window.removeEventListener("blur", end);
+    const tracker = createPressTracker<HTMLElement>((card, on) => card.toggleAttribute("data-pressed", on));
+    const point = (t: Touch) => ({ id: t.identifier, x: t.clientX, y: t.clientY });
+
+    // Move/end listeners exist only while a finger is tracked. Touch events keep targeting the element the touch started
+    // on and bubble to window, even when the finger leaves the card or the page is scrolling.
+    const stop = () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+      window.removeEventListener("blur", onBlur);
     };
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "touch" || !e.isPrimary || pointerId !== null) return; // only the first finger counts
-      const target = (e.target as Element).closest<HTMLElement>(".svc-card");
-      if (!target || !list.contains(target)) return;
-      pointerId = e.pointerId; card = target;
-      rect = target.getBoundingClientRect(); // one layout read per press, taken before the lift transform applies
-      setPressed(true);
-      window.addEventListener("pointermove", onMove, opts);
-      window.addEventListener("pointerup", onEnd, opts);
-      // The browser fires pointercancel the moment it takes this gesture over as a scroll, which ends the press. There is
-      // deliberately no window "scroll" listener: leftover momentum-scroll events right after the finger lands would clear
-      // the orange state instantly and make a normal tap look like nothing happened.
-      window.addEventListener("pointercancel", onEnd, opts);
-      window.addEventListener("blur", end); // e.g. the WhatsApp link opening another app or tab
+    const onMove = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) if (!tracker.move(point(t), window.scrollX, window.scrollY)) return stop();
+    };
+    const onEnd = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) if (tracker.end(t.identifier)) return stop();
+    };
+    const onBlur = () => { tracker.end(); stop(); }; // e.g. the WhatsApp link opening another app or tab
+    const onStart = (e: TouchEvent) => {
+      if (tracker.isActive()) return; // only the first finger counts
+      const t = e.changedTouches[0];
+      const card = (e.target as Element).closest<HTMLElement>(".svc-card");
+      if (!t || !card) return;
+      const r = card.getBoundingClientRect(); // one layout read per press, taken before the lift transform applies
+      if (!tracker.start(card, r, point(t), window.scrollX, window.scrollY)) return; // sets data-pressed synchronously
+      window.addEventListener("touchmove", onMove, opts);
+      window.addEventListener("touchend", onEnd, opts);
+      window.addEventListener("touchcancel", onEnd, opts);
+      window.addEventListener("blur", onBlur);
     };
 
-    list.addEventListener("pointerdown", onDown, opts);
+    list.addEventListener("touchstart", onStart, opts);
     return () => {
-      end();
-      list.removeEventListener("pointerdown", onDown);
+      tracker.end();
+      stop();
+      list.removeEventListener("touchstart", onStart);
     };
   }, []);
 

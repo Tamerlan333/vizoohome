@@ -43,7 +43,7 @@ body{color:#1E293B;background:#fff;font-family:Inter,system-ui,sans-serif}
 .svc-card:hover .svc-btn{background:#FF9D23;color:#0B192C}
 }
 /* Touch screens: the same orange state, shown only while a finger is on the card and inside it. ServicesSection sets
-   data-pressed from Pointer Events and clears it on lift, cancel, scroll, or when the finger leaves the card, so a tap never
+   data-pressed from Touch Events and clears it on lift, cancel, scroll, or when the finger leaves the card, so a tap never
    leaves it behind. Press and release are both instant (0s): a normal tap lasts ~100ms, so any fade-in would be cut off
    before the orange showed. A tapped link keeps focus, so keyboard focus here uses :focus-visible (external keyboards only)
    instead of :focus-within, which would leave the card orange after a tap. */
