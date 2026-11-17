@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Building2, Camera, Handshake, MessageCircle } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { serviceWhatsAppUrl, type ServiceKey } from "@/lib/whatsapp";
+import { createPressTracker } from "@/lib/servicesTouch";
 
 // Prices are display-only. They are never part of a WhatsApp message or URL.
 // price = current promotional price (main), was = original price (struck through).
@@ -20,33 +21,91 @@ const KICKER = "text-[11px] font-semibold uppercase leading-4 tracking-[0.08em] 
 
 export default function ServicesSection() {
   const { t } = useI18n();
-  const ref = useRef<HTMLElement>(null);
-  const [shown, setShown] = useState(false);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // Fade-up when the section scrolls into view. Without IntersectionObserver or with reduced motion, show immediately.
+  // Fade-up each card once, the first time it enters the viewport. This writes a data attribute straight to the DOM
+  // (no React state, so no re-render), stops watching each card once it is revealed, and disconnects when all are done.
+  // Without IntersectionObserver or with reduced motion, every card is shown immediately.
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const list = listRef.current;
+    if (!list) return;
+    const items = Array.from(list.children) as HTMLElement[];
     if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setShown(true);
+      items.forEach((li) => li.setAttribute("data-in", ""));
       return;
     }
-    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setShown(true); io.disconnect(); } }, { threshold: 0.15 });
-    io.observe(el);
-    const safety = setTimeout(() => setShown(true), 3000); // never leave content hidden
-    return () => { io.disconnect(); clearTimeout(safety); };
+    let pending = items.length;
+    const io = new IntersectionObserver((entries) => {
+      let order = 0; // stagger only cards that appear together (all 3 on desktop; one at a time when stacked on mobile)
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const li = entry.target as HTMLElement;
+        li.style.setProperty("--i", String(order++));
+        li.setAttribute("data-in", "");
+        io.unobserve(li);
+        if (--pending === 0) io.disconnect();
+      }
+    }, { threshold: 0.15 });
+    items.forEach((li) => io.observe(li));
+    return () => io.disconnect();
+  }, []);
+
+  // Touch press state (logic in lib/servicesTouch.ts): the card is orange from touchstart until touchend/touchcancel while
+  // the finger is inside it, and the press ends once the page actually scrolls. It is a data-pressed attribute written
+  // straight to the DOM (no React state). Every listener is passive and never calls preventDefault, so scrolling, links,
+  // and text selection behave as normal. Mouse input fires no touch events (desktop hover is pure CSS), and the matching
+  // CSS only applies on touch screens.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const opts = { passive: true } as const;
+    const tracker = createPressTracker<HTMLElement>((card, on) => card.toggleAttribute("data-pressed", on));
+    const point = (t: Touch) => ({ id: t.identifier, x: t.clientX, y: t.clientY });
+
+    // Move/end listeners exist only while a finger is tracked. Touch events keep targeting the element the touch started
+    // on and bubble to window, even when the finger leaves the card or the page is scrolling.
+    const stop = () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+      window.removeEventListener("blur", onBlur);
+    };
+    const onMove = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) if (!tracker.move(point(t), window.scrollX, window.scrollY)) return stop();
+    };
+    const onEnd = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) if (tracker.end(t.identifier)) return stop();
+    };
+    const onBlur = () => { tracker.end(); stop(); }; // e.g. the WhatsApp link opening another app or tab
+    const onStart = (e: TouchEvent) => {
+      if (tracker.isActive()) return; // only the first finger counts
+      const t = e.changedTouches[0];
+      const card = (e.target as Element).closest<HTMLElement>(".svc-card");
+      if (!t || !card) return;
+      const r = card.getBoundingClientRect(); // one layout read per press, taken before the lift transform applies
+      if (!tracker.start(card, r, point(t), window.scrollX, window.scrollY)) return; // sets data-pressed synchronously
+      window.addEventListener("touchmove", onMove, opts);
+      window.addEventListener("touchend", onEnd, opts);
+      window.addEventListener("touchcancel", onEnd, opts);
+      window.addEventListener("blur", onBlur);
+    };
+
+    list.addEventListener("touchstart", onStart, opts);
+    return () => {
+      tracker.end();
+      stop();
+      list.removeEventListener("touchstart", onStart);
+    };
   }, []);
 
   return (
-    <section ref={ref} data-shown={shown} aria-labelledby="svc-title" className="svc mx-auto mt-16 max-w-site px-4 md:px-10">
-      <noscript><style>{".svc .svc-card{opacity:1!important;transform:none!important}"}</style></noscript>
-      <div className="rounded-3xl bg-soft px-5 py-10 md:px-10 md:py-14">
+    <section aria-labelledby="svc-title" className="svc mx-auto mt-16 max-w-site px-4 md:px-10">
+      <noscript><style>{".svc-list>li{opacity:1!important;transform:none!important}"}</style></noscript>
         <div className="mx-auto max-w-2xl text-center">
           <h2 id="svc-title" className="text-[clamp(1.6rem,3.5vw,2.25rem)] font-bold text-navy">{t("svc.title")}</h2>
-          <p className="mt-3 text-mute">{t("svc.sub")}</p>
         </div>
-        <ul className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {SERVICES.map(({ n, key, Icon, price, was, premium }, i) => {
+        <ul ref={listRef} className="svc-list mt-8 grid gap-6 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
+          {SERVICES.map(({ n, key, Icon, price, was }) => {
             const title = t(`svc.${n}.title`);
             const cta = t(`svc.${n}.cta`);
             // Only card 1 has the "first month" note; cards 2 and 3 keep an empty spacer (from md up) so titles line up.
@@ -54,11 +113,10 @@ export default function ServicesSection() {
             return (
               <li key={key} className={n === 3 ? "md:col-span-2 lg:col-span-1" : ""}>
                 <article
-                  style={{ "--i": i } as React.CSSProperties}
-                  className={`svc-card relative flex h-full flex-col rounded-2xl border bg-white p-6 md:p-8 ${premium ? "svc-premium border-transparent" : "border-line shadow-sm"}`}
+                  className="svc-card relative flex h-full flex-col rounded-2xl border bg-white p-6 md:p-8"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className={`grid h-12 w-12 place-items-center rounded-xl ${premium ? "bg-amber text-navy" : "bg-navy text-amber"}`}>
+                    <span className="grid h-12 w-12 place-items-center rounded-xl bg-navy text-amber">
                       <Icon className="h-6 w-6" aria-hidden />
                     </span>
                     {n === 1 && <span className="rounded-full bg-amber/15 px-3 py-1 text-xs font-semibold tracking-wide text-navy ring-1 ring-amber/40">{t("svc.1.badge")}</span>}
@@ -82,7 +140,7 @@ export default function ServicesSection() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${cta}: ${title} (${t("svc.newTab")})`}
-                    className={`mt-8 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition duration-150 active:scale-[.98] ${premium ? "bg-amber text-navy hover:brightness-95" : "bg-navy text-white hover:bg-[#13294a]"}`}
+                    className="svc-btn mt-8 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold active:scale-[.98]"
                   >
                     <MessageCircle className="h-4 w-4" aria-hidden />
                     {cta}
@@ -92,7 +150,6 @@ export default function ServicesSection() {
             );
           })}
         </ul>
-      </div>
     </section>
   );
 }
