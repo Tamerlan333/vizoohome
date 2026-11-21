@@ -6,6 +6,7 @@ export interface Property {
   cityId: string; districtId?: string; settlementId?: string; metroIds?: string[]; areaId?: string; address?: string; price: number; currency: string; rooms?: number; areaM2?: number;
   floor?: number; totalFloors?: number; buildingType?: "new" | "old" | "not_applicable"; repairStatus?: "repaired" | "unrepaired"; hasTitleDeed?: "yes" | "no";
   featured?: boolean; /** Total number of photos; list queries return only the first 5 in `photos`. */ photoCount?: number; /** Only fetched for the detail page (see getBySlug); never in list results. */ contactPhone?: string; videoUrl?: string | null; photos?: Photo[];
+  /** Map pin from the Studio "location" geopoint. Fetched by the detail and map queries; may be missing or invalid (check with hasCoordinates). */ lat?: number | null; lng?: number | null;
 }
 /** Legacy documents may still say "house" or "villa"; both belong to the unified "yard-house" category. */
 export const normalizeType = (t: string): string => (t === "house" || t === "villa" ? "yard-house" : t);

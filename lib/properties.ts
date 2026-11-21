@@ -5,8 +5,8 @@ import type { SearchParams } from "@/lib/search";
 export { PAGE_SIZE };
 /** Every listing field except the photos. */
 const FIELDS = `_id,"slug":slug.current,title,description,transaction,propertyType,cityId,districtId,settlementId,metroIds,areaId,address,price,currency,rooms,areaM2,floor,totalFloors,buildingType,repairStatus,hasTitleDeed,featured,"videoUrl":video.asset->url`;
-/** Detail projection source: ALL photos (unchanged from before). */
-const BASE = `${FIELDS},"photos":photos[defined(asset)]{"url":asset->url,alt}`;
+/** Detail projection source: ALL photos (unchanged from before) + the stored map pin (Studio "location" geopoint) for the detail map. */
+const BASE = `${FIELDS},"photos":photos[defined(asset)]{"url":asset->url,alt},"lat":location.lat,"lng":location.lng`;
 /** List/related/saved results never include contactPhone. They carry only the first 5 photos that have an image URL (the card preview) plus the total number of such photos. */
 export const PROJ = `{${FIELDS},"photoCount":count(coalesce(photos,[])[defined(asset->url)]),"photos":photos[defined(asset->url)][0...5]{"url":asset->url,alt}}`;
 /** Detail page only: the owner's phone is fetched here and nowhere else. */

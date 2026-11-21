@@ -32,9 +32,13 @@ import {
 import { useI18n } from "@/lib/i18n/client";
 import { areaResultsState, cancelsAreaWrite, urlSyncAction } from "@/lib/area-results";
 import { useAreaSelection } from "@/components/AreaResults";
+import { markerStyle, toMapMarkers } from "@/lib/map-markers";
+import { formatPrice } from "@/lib/format";
 
 export interface PropertyMapItem {
   _id: string;
+  /** Used for the marker's link to the listing's detail page. */
+  slug?: string | null;
   title?: {
     az?: string;
     ru?: string;
@@ -869,44 +873,46 @@ export default function PropertyMap({
 
     if (!showMarkers) return;
 
-    for (const item of items) {
-      if (
-        !Number.isFinite(item.lat) ||
-        !Number.isFinite(item.lng) ||
-        item.lat < -90 ||
-        item.lat > 90 ||
-        item.lng < -180 ||
-        item.lng > 180
-      ) {
-        continue;
-      }
-
+    // One marker per listing with valid stored coordinates (lib/map-markers); the popup links to THAT listing.
+    for (const item of toMapMarkers(items)) {
       const title =
+        (item.title as Record<string, string | undefined> | undefined)?.[lang] ||
         item.title?.az ||
         item.title?.ru ||
         item.title?.en ||
-        "Elan xəritədə";
+        t("map.marker");
 
       const element = document.createElement("button");
       element.type = "button";
       element.setAttribute("aria-label", title);
-
-      Object.assign(element.style, {
-        width: "18px",
-        height: "18px",
-        borderRadius: "50%",
-        background: "#FF9D23",
-        border: "3px solid white",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-        cursor: "pointer",
-      });
+      element.dataset.propertyId = item.id;
+      Object.assign(element.style, markerStyle());
 
       const popupContent = document.createElement("div");
-      popupContent.textContent = title;
+      popupContent.className = "min-w-[180px] max-w-[240px] space-y-1 pr-4 text-ink";
+      const heading = document.createElement("p");
+      heading.className = "text-sm font-semibold leading-snug text-navy";
+      heading.textContent = title;
+      popupContent.append(heading);
+      if (typeof item.price === "number" && Number.isFinite(item.price)) {
+        const price = document.createElement("p");
+        price.className = "text-sm text-ink";
+        price.textContent = formatPrice(item.price, item.currency ?? "AZN", lang);
+        popupContent.append(price);
+      }
+      if (item.href) {
+        const link = document.createElement("a");
+        link.href = item.href;
+        link.className =
+          "mt-2 inline-flex items-center rounded-lg bg-amber px-3 py-1.5 text-xs font-semibold text-navy transition hover:brightness-95";
+        link.textContent = t("map.open");
+        popupContent.append(link);
+      }
 
       const popup = new ml.Popup({
         closeButton: true,
         closeOnClick: true,
+        offset: 14,
       }).setDOMContent(popupContent);
 
       const marker = new ml.Marker({

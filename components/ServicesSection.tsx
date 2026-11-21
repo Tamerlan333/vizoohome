@@ -8,7 +8,7 @@ import { createPressTracker } from "@/lib/servicesTouch";
 // Prices are display-only. They are never part of a WhatsApp message or URL.
 // price = current promotional price (main), was = original price (struck through).
 const SERVICES: { n: 1 | 2 | 3; key: ServiceKey; Icon: typeof Camera; price: string; was: string; premium?: boolean }[] = [
-  { n: 1, key: "presentation", Icon: Building2, price: "15", was: "30" },
+  { n: 1, key: "presentation", Icon: Building2, price: "10", was: "20" },
   { n: 2, key: "shooting", Icon: Camera, price: "350", was: "450" },
   { n: 3, key: "realtor", Icon: Handshake, price: "650", was: "850", premium: true },
 ];

@@ -24,13 +24,13 @@ test("styles: reveal never leaves content hidden under reduced motion", () => {
 
 test("pricing: all three cards show promo price + struck-through original price, exact values", () => {
   const c = fs.readFileSync("components/ServicesSection.tsx", "utf8");
-  assert.ok(c.includes('{ n: 1, key: "presentation", Icon: Building2, price: "15", was: "30" }')); assert.ok(c.includes('{ n: 2, key: "shooting", Icon: Camera, price: "350", was: "450" }')); assert.ok(c.includes('{ n: 3, key: "realtor", Icon: Handshake, price: "650", was: "850", premium: true }'));
+  assert.ok(c.includes('{ n: 1, key: "presentation", Icon: Building2, price: "10", was: "20" }')); assert.ok(c.includes('{ n: 2, key: "shooting", Icon: Camera, price: "350", was: "450" }')); assert.ok(c.includes('{ n: 3, key: "realtor", Icon: Handshake, price: "650", was: "850", premium: true }'));
   assert.equal((c.match(/was: "/g) ?? []).length, 3); assert.ok(c.includes("line-through") && c.includes('<span className={WAS}>{was} AZN</span>') && c.includes('<span className={AMOUNT}>{price}</span>')); });
 test("labels and badge: exact Azerbaijani, natural RU/EN, first-month note on card 1 only", () => {
-  const az: Record<string, string> = { "svc.1.badge": "50% ENDİRİM", "svc.1.label": "İLK AY ÜÇÜN XÜSUSİ TƏKLİF", "svc.1.note": "15 AZN yalnız ilk ay üçün keçərlidir.", "svc.2.label": "XÜSUSİ TƏKLİF", "svc.3.label": "PREMIUM TƏKLİF", "svc.was": "Əvvəlki qiymət" };
+  const az: Record<string, string> = { "svc.1.badge": "50% ENDİRİM", "svc.1.label": "İLK AY ÜÇÜN XÜSUSİ TƏKLİF", "svc.1.note": "10 AZN yalnız ilk ay üçün keçərlidir.", "svc.2.label": "XÜSUSİ TƏKLİF", "svc.3.label": "PREMIUM TƏKLİF", "svc.was": "Əvvəlki qiymət" };
   for (const [k, v] of Object.entries(az)) assert.equal(DICT.az[k], v, k); for (const l of LANGS) for (const k of Object.keys(az)) assert.ok(DICT[l][k]?.trim(), `${l}:${k}`);
   assert.equal(DICT.ru["svc.1.badge"], "СКИДКА 50%"); assert.equal(DICT.en["svc.1.badge"], "50% OFF"); assert.equal(DICT.ru["svc.2.label"], "СПЕЦИАЛЬНОЕ ПРЕДЛОЖЕНИЕ"); assert.equal(DICT.en["svc.2.label"], "SPECIAL OFFER"); assert.equal(DICT.ru["svc.3.label"], "ПРЕМИУМ-ПРЕДЛОЖЕНИЕ"); assert.equal(DICT.en["svc.3.label"], "PREMIUM OFFER");
-  assert.ok(/15/.test(DICT.ru["svc.1.note"]) && /15/.test(DICT.en["svc.1.note"])); assert.ok(!("svc.2.note" in DICT.az) && !("svc.3.note" in DICT.az), "no invented conditions for cards 2 and 3");
+  assert.ok(/10/.test(DICT.ru["svc.1.note"]) && /10/.test(DICT.en["svc.1.note"])); assert.ok(!("svc.2.note" in DICT.az) && !("svc.3.note" in DICT.az), "no invented conditions for cards 2 and 3");
   for (const l of LANGS) for (const k of ["svc.2.label", "svc.3.label"]) assert.ok(!/\d/.test(DICT[l][k]), "no numbers or percentages invented for cards 2 and 3"); });
 test("pricing typography: one shared, lighter style for all three prices", () => {
   const c = fs.readFileSync("components/ServicesSection.tsx", "utf8"); const get = (n: string) => new RegExp(`const ${n} = "([^"]+)"`).exec(c)?.[1] ?? "";
@@ -39,4 +39,4 @@ test("pricing typography: one shared, lighter style for all three prices", () =>
   assert.ok(/font-normal/.test(cur) && /text-sm/.test(cur) && /font-normal/.test(was) && /text-sm/.test(was), "currency and old price are smaller and lighter");
   assert.equal((c.match(/className=\{AMOUNT\}/g) ?? []).length, 1, "one shared amount element for every card"); assert.ok(!c.includes("text-5xl") && !c.includes("font-extrabold")); });
 test("WhatsApp messages still contain no price (including the discount numbers)", () => {
-  for (const k of ["presentation", "shooting", "realtor"] as const) { const m = SERVICE_MESSAGES[k]; assert.ok(!/\d|AZN|ENDİRİM/i.test(m), k); assert.ok(!/(^|[^0-9])(15|30|350|450|650|850)([^0-9]|$)/.test(decodeURIComponent(serviceWhatsAppUrl(k)))); } });
+  for (const k of ["presentation", "shooting", "realtor"] as const) { const m = SERVICE_MESSAGES[k]; assert.ok(!/\d|AZN|ENDİRİM/i.test(m), k); assert.ok(!/(^|[^0-9])(10|20|350|450|650|850)([^0-9]|$)/.test(decodeURIComponent(serviceWhatsAppUrl(k)))); } });

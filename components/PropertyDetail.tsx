@@ -4,6 +4,8 @@ import Gallery from "@/components/Gallery";
 import PropertyCard from "@/components/PropertyCard";
 import SaveButton from "@/components/SaveButton";
 import StatusBadges from "@/components/StatusBadges";
+import PropertyLocationMap from "@/components/PropertyLocationMap";
+import { detailMarker } from "@/lib/map-markers";
 import { formatPrice } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { labelOf } from "@/lib/locations";
@@ -24,6 +26,7 @@ export default async function PropertyDetail({ p, related }: { p: Property; rela
   const cta = <a href={whatsappUrl(t("wa.prop", { t: title }))} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-amber px-5 py-3 font-semibold text-navy transition hover:brightness-95 active:scale-[.97]">{t("d.contact")}</a>;
   const desc = descOf(p, lang);
   const contact = contactOf(p.contactPhone, t("wa.prop", { t: title })); // null when missing/invalid -> block hidden
+  const pin = detailMarker(p); // this listing's own stored coordinates, or null -> map section hidden
   return (<article className="mx-auto max-w-site px-4 py-8 md:px-10">
     <Link href="/properties" className="text-sm underline">{t("d.back")}</Link>
     <h1 className="mt-4 text-[clamp(1.6rem,3.5vw,2.4rem)] font-bold text-navy">{title}</h1>
@@ -42,6 +45,8 @@ export default async function PropertyDetail({ p, related }: { p: Property; rela
         <div className="mt-4 flex flex-wrap gap-3">
           <a href={contact.tel} className="inline-flex min-h-[44px] items-center rounded-lg bg-navy px-5 text-sm font-semibold text-white transition active:scale-[.97]">{t("contact.call")}</a>
           <a href={contact.wa} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-amber px-5 text-sm font-semibold text-navy transition hover:brightness-95 active:scale-[.97]">{t("contact.whatsapp")}</a></div></aside>)}</div>
+    {pin && <section aria-labelledby="property-map" className="mt-8"><h2 id="property-map" className="text-xl font-semibold text-navy">{t("d.map")}</h2>
+      <PropertyLocationMap lat={pin.lat} lng={pin.lng} title={title} /></section>}
     <div className="mt-8">{cta}</div>
     {related.length > 0 && <><h2 className="mt-12 text-2xl font-bold text-navy">{t("d.related")}</h2><div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{related.map((r, i) => <PropertyCard key={r._id} p={r} index={i} />)}</div></>}</article>);
 }
