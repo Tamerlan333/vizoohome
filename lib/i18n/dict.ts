@@ -113,6 +113,7 @@ const R: [string, string, string, string][] = [
 ["map.missingKey", "Xəritə açarı təyin edilməyib. MapTiler konfiqurasiyasını yoxlayın.", "Ключ карты не задан. Проверьте настройки MapTiler.", "The map key is not set. Check the MapTiler configuration."],
 ["map.invalidKey", "Xəritə açarı düzgün formatda deyil. Konfiqurasiyanı yoxlayın.", "Ключ карты имеет неверный формат. Проверьте настройки.", "The map key has an invalid format. Check the configuration."],
 ["map.draw", "Ərazini seç", "Выбрать область", "Select area"],
+["search.mapArea", "Xəritədə ərazini seç", "Выбрать область на карте", "Select an area on the map"],
 ["map.redraw", "Yenidən çək", "Нарисовать заново", "Redraw"],
 ["map.cancel", "Ləğv et", "Отмена", "Cancel"],
 ["map.edit", "Redaktə et", "Редактировать", "Edit"],
