@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Boxes, Building2, Home, LayoutGrid, Mountain, Sparkles, Landmark, Store } from "lucide-react";
+import { Boxes, Building2, Home, LayoutGrid, Map as MapIcon, Mountain, Sparkles, Landmark, Store } from "lucide-react";
 import LocationPicker from "./LocationPicker";
 import AdvancedFilters from "./AdvancedFilters";
 import { countActive, emptyAdvancedForm, formFromFilters, serializeAdvanced, validateAdvanced, type AdvancedFilters as AdvFilters } from "@/lib/advanced-filters";
@@ -26,7 +26,8 @@ function syncMapArea(reason: "reset" | "submit"): string | undefined {
   return detail.poly;
 }
 export interface Initial extends Partial<AdvFilters> { transaction?: string; city?: string; districts?: string[]; settlements?: string[]; metro?: string[]; type?: string; building?: string; rooms?: number; minPrice?: number; maxPrice?: number; polygon?: GeoPolygon }
-export default function PropertySearch({ initial = {} }: { initial?: Initial }) {
+/** mapShortcut (home page only): map button next to the location field; opens the results page with the draw tool armed. */
+export default function PropertySearch({ initial = {}, mapShortcut = false }: { initial?: Initial; mapShortcut?: boolean }) {
   const { t } = useI18n(); const r = useRouter();
   const [tx, setTx] = useState(initial.transaction === "rent" ? "rent" : "sale");
   const [sel, setSel] = useState<Selection>(() => normalize({ city: initial.city, districts: initial.districts, settlements: initial.settlements, metro: initial.metro }));
@@ -34,7 +35,7 @@ export default function PropertySearch({ initial = {} }: { initial?: Initial }) 
   const [mn, setMn] = useState(initial.minPrice?.toString() ?? ""); const [mx, setMx] = useState(initial.maxPrice?.toString() ?? ""); const [err, setErr] = useState("");
   const [adv, setAdv] = useState(() => formFromFilters(initial)); const land = type === "land";
   const [advOpen, setAdvOpen] = useState(() => countActive(formFromFilters(initial), { land: initial.type === "land" }) > 0);
-  function submit(e?: React.FormEvent) {
+  function submit(e?: React.FormEvent, draw = false) {
     e?.preventDefault();
     if ((mn && +mn < 0) || (mx && +mx < 0)) return setErr(t("err.neg"));
     if (mn && mx && +mx < +mn) return setErr(t("err.range"));
@@ -46,12 +47,14 @@ export default function PropertySearch({ initial = {} }: { initial?: Initial }) 
     // ready: the server's area is kept as before.
     const poly = syncMapArea("submit") ?? (initial.polygon ? polygonToParam(initial.polygon) : "");
     if (poly) q.set("poly", poly);
+    if (draw) q.set("draw", "1"); // the results page arms the existing "Ərazini seç" tool (PropertyMap autoDraw)
     r.push(`/properties?${q}`);
   }
   function reset() { setTx("sale"); setSel(emptySelection()); setType(""); setBuilding(""); setRooms(""); setMn(""); setMx(""); setErr(""); setAdv(emptyAdvancedForm()); setAdvOpen(false); syncMapArea("reset"); r.push("/properties"); }
   return (<form onSubmit={submit} className="rounded-xl bg-white p-4 text-ink shadow-sm" aria-label={t("search.aria")}>
     <div role="tablist" className="mb-4 flex gap-2">{(["sale", "rent"] as const).map((v) => <button key={v} type="button" role="tab" aria-selected={tx === v} onClick={() => setTx(v)} className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${tx === v ? "bg-navy text-white" : "bg-soft"}`}>{t(`tab.${v}`)}</button>)}</div>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><div className="sm:col-span-2"><LocationPicker value={sel} onChange={setSel} /></div></div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><div className="flex items-start gap-3 sm:col-span-2"><div className="min-w-0 flex-1"><LocationPicker value={sel} onChange={setSel} /></div>
+      {mapShortcut && <button type="button" onClick={() => submit(undefined, true)} aria-label={t("search.mapArea")} title={t("search.mapArea")} className="mt-[18px] grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber/10 text-navy transition duration-150 hover:bg-amber/20 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"><MapIcon className="h-[22px] w-[22px]" strokeWidth={1.8} aria-hidden /></button>}</div></div>
     <fieldset className="mt-4"><legend className="text-xs font-medium text-mute">{t("search.type")}</legend>
       <div role="radiogroup" className="mt-1 flex flex-wrap gap-2">{TYPES.map(([v, k, Icon]) => <button key={v} type="button" role="radio" aria-checked={type === v} onClick={() => setType(v)} className={tile(type === v)}><span className={sticker(type === v)}><Icon className="h-3.5 w-3.5" aria-hidden /></span>{t(k)}</button>)}</div></fieldset>
     {!land && <fieldset className="anim-up mt-4"><legend className="text-xs font-medium text-mute">{t("search.building")}</legend>

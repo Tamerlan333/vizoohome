@@ -78,7 +78,8 @@ export default async function Results({
       <PropertySearch key={JSON.stringify(f)} initial={f} />
 
       <AreaProvider serverParam={areaParam}>
-        <section aria-label="Elanların xəritəsi" className="space-y-3">
+        {/* id: scroll target of the home page map shortcut (PropertyMap autoDraw, MAP_SECTION_ID there) */}
+        <section id="map-section" aria-label="Elanların xəritəsi" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xl font-semibold text-navy">
               Xəritədə elanlar
@@ -90,7 +91,7 @@ export default async function Results({
             </AreaGate>
           </div>
 
-          <PropertyMap items={mapResult.items} initialPolygon={polygon} />
+          <PropertyMap items={mapResult.items} initialPolygon={polygon} autoDraw={q.draw === "1"} />
 
           <AreaGate>
             {mapResult.missingCoords > 0 && (

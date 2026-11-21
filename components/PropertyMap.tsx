@@ -51,6 +51,8 @@ interface PropertyMapProps {
   className?: string;
   /** Area from the "poly" URL parameter (already validated on the server). */
   initialPolygon?: GeoPolygon | null;
+  /** Opened from the home page map shortcut ("draw=1"): start the existing "Ərazini seç" tool once the map is ready. */
+  autoDraw?: boolean;
 }
 
 type MapStatus = "loading" | "ready" | "error";
@@ -83,6 +85,8 @@ const URL_DEBOUNCE_MS = 350;
 /** Sent by PropertySearch right before it navigates (same name there; a test checks they match). */
 const AREA_SYNC_EVENT = "vh:area-sync";
 type AreaSyncDetail = { reason: "reset" | "submit"; poly?: string };
+/** id of the results page section holding the "Xəritədə elanlar" heading (app/(site)/properties/page.tsx). */
+const MAP_SECTION_ID = "map-section";
 
 const lineFeature = (kind: string, coordinates: LngLat[]): GeoJSON.Feature => ({
   type: "Feature",
@@ -110,6 +114,7 @@ export default function PropertyMap({
   items = [],
   className = "",
   initialPolygon = null,
+  autoDraw = false,
 }: PropertyMapProps) {
   const { t, lang } = useI18n();
 
@@ -938,6 +943,70 @@ export default function PropertyMap({
     writtenRef.current.clear();                       // the server's area wins: older own writes no longer matter
     apiRef.current?.applyExternal(initialPolygonRef.current ?? null);
   }, [initialParam, status, updating]);
+
+  // Home page map shortcut ("draw=1"). Two independent one-shot steps:
+  //   1. Scroll + URL cleanup, as soon as the map has settled: ready, failed, or never started (missing/invalid key).
+  //      A failed map still brings the user to the "Xəritədə elanlar" section and its error message.
+  //   2. Drawing, only when the map is ready (never on error). Kept separate because MapLibre can report an error for one
+  //      resource before "load" and still become ready afterwards.
+  // Declared after the URL -> map effect so its initial applyExternal cannot cancel the drawing.
+  const autoScrollDoneRef = useRef(false);
+  const autoDrawDoneRef = useRef(false);
+  const userScrolledRef = useRef(false);
+  const mapSettled = status !== "loading" || !config.ok;
+
+  // While the map loads, remember whether the user scrolls on their own; then they are not pulled back to the map.
+  // Input events only (not "scroll"): the router's own scroll-to-top on navigation must not count as the user's.
+  useEffect(() => {
+    if (!autoDraw || autoScrollDoneRef.current) return;
+    const keys = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+    const mark = () => { userScrolledRef.current = true; };
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (keys.has(e.key) && !el?.closest("input, textarea, select, [contenteditable='true']")) mark();
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (e.clientX >= document.documentElement.clientWidth) mark();   // press on the page scrollbar
+    };
+    window.addEventListener("wheel", mark, { passive: true });
+    window.addEventListener("touchmove", mark, { passive: true });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("wheel", mark);
+      window.removeEventListener("touchmove", mark);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [autoDraw, mapSettled]);                           // re-run after settling only to remove the listeners
+
+  useEffect(() => {
+    if (!autoDraw || autoScrollDoneRef.current || !mapSettled) return;
+    autoScrollDoneRef.current = true;
+    // One scroll, once the map box has its final content (nothing shifts afterwards): the "Xəritədə elanlar" heading
+    // goes right under the sticky header, measured now because it wraps on mobile.
+    const target = document.getElementById(MAP_SECTION_ID) ?? containerRef.current;
+    if (target && !userScrolledRef.current) {
+      const header = document.querySelector("header");
+      const pos = header ? getComputedStyle(header).position : "";
+      const offset = header && (pos === "sticky" || pos === "fixed") ? header.getBoundingClientRect().height : 0;
+      const top = target.getBoundingClientRect().top + window.scrollY - offset - 16;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+    }
+    // "draw" leaves the address (no navigation), so a reload, Back or the map's own URL writes never re-trigger it.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("draw")) {
+      url.searchParams.delete("draw");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, [autoDraw, mapSettled]);
+
+  useEffect(() => {
+    if (!autoDraw || autoDrawDoneRef.current || status !== "ready" || !apiRef.current) return;
+    autoDrawDoneRef.current = true;
+    apiRef.current.startDrawing();                      // exactly what the "Ərazini seç" button does
+  }, [autoDraw, status]);
 
   // While the map is not ready (loading, failed, missing key) it cannot hold its own area: the URL's area is the selection.
   useEffect(() => {
