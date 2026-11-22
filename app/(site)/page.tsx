@@ -3,6 +3,7 @@ import PropertyCard from "@/components/PropertyCard";
 import { getI18n } from "@/lib/i18n/server";
 import { listPublished } from "@/lib/properties";
 import ServicesSection from "@/components/ServicesSection";
+export const metadata = { title: "VizooHome | Premium əmlak saytı" };
 export default async function Home() {
   const { t } = await getI18n();
   const { rows } = await listPublished({});
